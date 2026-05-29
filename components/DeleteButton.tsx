@@ -45,8 +45,11 @@ export default function DeleteButton({
         return
       }
 
-      // Succès — on ferme et on redirige vers l'arbre
+      // Succès — on notifie les autres vues, on ferme et on redirige vers l'arbre
       setShow(false)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('youm-data-updated'))
+      }
       if (onDeleted) onDeleted()
       router.push('/')
       router.refresh()

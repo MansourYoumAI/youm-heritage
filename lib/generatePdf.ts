@@ -12,20 +12,27 @@ const TOP_MARGIN = 145
 const SIDE_MARGIN = 60
 const BOTTOM_MARGIN = 80
 
-// Couleurs (RGB)
-const C_PARCHMENT = [249, 246, 239] as const
-const C_INK = [26, 15, 0] as const
-const C_BROWN = [112, 88, 64] as const
-const C_LIGHT_BROWN = [160, 140, 120] as const
-const C_GOLD = [196, 146, 42] as const
-const C_GOLD_LIGHT = [245, 233, 196] as const
-const C_GOLD_DARK = [139, 98, 20] as const
-const C_BORDER = [224, 208, 184] as const
-const C_LINE_COUPLE = [184, 160, 122] as const
-const C_LINE_PARENT = [212, 196, 168] as const
-const C_BG_MALE = [232, 240, 230] as const
-const C_BG_FEMALE = [250, 228, 214] as const
-const C_BG_NEUTRAL = [240, 235, 227] as const
+// Couleurs (RGB) — typées explicitement pour éviter les spreads sur tuples
+// qui posent problème selon les versions de jsPDF / TypeScript.
+type RGB = readonly [number, number, number]
+const C_PARCHMENT: RGB = [249, 246, 239]
+const C_INK: RGB = [26, 15, 0]
+const C_BROWN: RGB = [112, 88, 64]
+const C_LIGHT_BROWN: RGB = [160, 140, 120]
+const C_GOLD: RGB = [196, 146, 42]
+const C_GOLD_LIGHT: RGB = [245, 233, 196]
+const C_GOLD_DARK: RGB = [139, 98, 20]
+const C_BORDER: RGB = [224, 208, 184]
+const C_LINE_COUPLE: RGB = [184, 160, 122]
+const C_LINE_PARENT: RGB = [212, 196, 168]
+const C_BG_MALE: RGB = [232, 240, 230]
+const C_BG_FEMALE: RGB = [250, 228, 214]
+const C_BG_NEUTRAL: RGB = [240, 235, 227]
+
+// Helpers pour éviter de répéter le spread partout
+const setFill = (doc: jsPDF, c: RGB) => doc.setFillColor(c[0], c[1], c[2])
+const setDraw = (doc: jsPDF, c: RGB) => doc.setDrawColor(c[0], c[1], c[2])
+const setText = (doc: jsPDF, c: RGB) => doc.setTextColor(c[0], c[1], c[2])
 
 async function loadImageAsBase64(url: string): Promise<string | null> {
   try {
@@ -55,13 +62,13 @@ function drawInitialsBox(
   scale: number,
 ) {
   if (person.is_royal) {
-    doc.setFillColor(...C_GOLD_LIGHT)
+    setFill(doc, C_GOLD_LIGHT)
   } else if (person.gender === 'homme') {
-    doc.setFillColor(...C_BG_MALE)
+    setFill(doc, C_BG_MALE)
   } else if (person.gender === 'femme') {
-    doc.setFillColor(...C_BG_FEMALE)
+    setFill(doc, C_BG_FEMALE)
   } else {
-    doc.setFillColor(...C_BG_NEUTRAL)
+    setFill(doc, C_BG_NEUTRAL)
   }
   const r = 2 * scale
   doc.roundedRect(x, y, size, size, r, r, 'F')
@@ -69,13 +76,13 @@ function drawInitialsBox(
   const initials = `${person.first_name.charAt(0)}${person.last_name.charAt(0)}`.toUpperCase()
   doc.setFont('times', 'bold')
   doc.setFontSize(Math.max(8, 7 * scale))
-  if (person.is_royal) doc.setTextColor(...C_GOLD_DARK)
-  else doc.setTextColor(...C_BROWN)
+  if (person.is_royal) setText(doc, C_GOLD_DARK)
+  else setText(doc, C_BROWN)
   doc.text(initials, x + size / 2, y + size / 2 + 2.2 * scale, { align: 'center' })
 }
 
 function drawDecorativeBorder(doc: jsPDF) {
-  doc.setDrawColor(...C_GOLD)
+  setDraw(doc, C_GOLD)
   doc.setLineWidth(0.5)
   const m = 20
   doc.rect(m, m, PAGE_W - 2 * m, PAGE_H - 2 * m)
@@ -85,9 +92,9 @@ function drawDecorativeBorder(doc: jsPDF) {
 
 function drawCrown(doc: jsPDF, cx: number, cy: number, size: number) {
   // Petit cercle doré avec un point central
-  doc.setFillColor(...C_GOLD)
+  setFill(doc, C_GOLD)
   doc.circle(cx, cy, size, 'F')
-  doc.setFillColor(...C_INK)
+  setFill(doc, C_INK)
   doc.circle(cx, cy, size * 0.35, 'F')
 }
 
@@ -123,7 +130,7 @@ export async function downloadFamilyTreePdf(
   })
 
   // ─── Fond parchemin
-  doc.setFillColor(...C_PARCHMENT)
+  setFill(doc, C_PARCHMENT)
   doc.rect(0, 0, PAGE_W, PAGE_H, 'F')
 
   // ─── Liseré décoratif doré
@@ -132,26 +139,26 @@ export async function downloadFamilyTreePdf(
   // ─── Titre
   doc.setFont('times', 'bold')
   doc.setFontSize(90)
-  doc.setTextColor(...C_INK)
+  setText(doc, C_INK)
   const titleText = familyLabel ? `Famille ${familyLabel}` : 'Famille Youm'
   doc.text(titleText, PAGE_W / 2, 70, { align: 'center' })
 
   // ─── Trait doré sous le titre
-  doc.setDrawColor(...C_GOLD)
+  setDraw(doc, C_GOLD)
   doc.setLineWidth(0.8)
   doc.line(PAGE_W / 2 - 100, 90, PAGE_W / 2 + 100, 90)
-  doc.setFillColor(...C_GOLD)
+  setFill(doc, C_GOLD)
   doc.circle(PAGE_W / 2, 90, 1.4, 'F')
 
   // ─── Sous-titre
   doc.setFont('times', 'italic')
   doc.setFontSize(22)
-  doc.setTextColor(...C_BROWN)
+  setText(doc, C_BROWN)
   doc.text('Arbre généalogique', PAGE_W / 2, 108, { align: 'center' })
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(14)
-  doc.setTextColor(...C_LIGHT_BROWN)
+  setText(doc, C_LIGHT_BROWN)
   const today = new Date().toLocaleDateString('fr-FR', {
     day: 'numeric', month: 'long', year: 'numeric',
   })
@@ -175,17 +182,17 @@ export async function downloadFamilyTreePdf(
   const ty = (y: number) => offsetY + y * scale
 
   // ─── Lignes de couples (horizontales)
-  doc.setDrawColor(...C_LINE_COUPLE)
+  setDraw(doc, C_LINE_COUPLE)
   doc.setLineWidth(Math.max(0.4, 0.7 * scale))
   for (const edge of layout.coupleEdges) {
     doc.line(tx(edge.x1), ty(edge.y1), tx(edge.x2), ty(edge.y2))
     // Point médian
-    doc.setFillColor(...C_LINE_COUPLE)
+    setFill(doc, C_LINE_COUPLE)
     doc.circle(tx(edge.midX), ty(edge.y1), Math.max(0.6, 1 * scale), 'F')
   }
 
   // ─── Lignes parent-enfant : V (traits diagonaux directs)
-  doc.setDrawColor(...C_LINE_PARENT)
+  setDraw(doc, C_LINE_PARENT)
   doc.setLineWidth(Math.max(0.3, 0.5 * scale))
   doc.setLineDashPattern([Math.max(0.8, 1.2 * scale), Math.max(0.5, 0.8 * scale)], 0)
   for (const edge of layout.parentEdges) {
@@ -206,10 +213,10 @@ export async function downloadFamilyTreePdf(
     // Fond blanc + bordure
     doc.setFillColor(255, 255, 255)
     if (person.is_royal) {
-      doc.setDrawColor(...C_GOLD)
+      setDraw(doc, C_GOLD)
       doc.setLineWidth(Math.max(0.5, 0.9 * scale))
     } else {
-      doc.setDrawColor(...C_BORDER)
+      setDraw(doc, C_BORDER)
       doc.setLineWidth(Math.max(0.3, 0.5 * scale))
     }
     const radius = nw * 0.06
@@ -245,7 +252,7 @@ export async function downloadFamilyTreePdf(
 
     // Petit séparateur doré sous la photo
     const sepY = photoY + photoSize + nh * 0.05
-    doc.setDrawColor(...C_GOLD)
+    setDraw(doc, C_GOLD)
     doc.setLineWidth(Math.max(0.15, 0.25 * scale))
     doc.line(nx + nw * 0.32, sepY, nx + nw * 0.68, sepY)
 
@@ -269,13 +276,13 @@ export async function downloadFamilyTreePdf(
       const pillX = nx + (nw - pillW) / 2
       const pillY = firstNameY - pillH * 0.6
       // fond doré clair
-      doc.setFillColor(...C_GOLD_LIGHT)
-      doc.setDrawColor(...C_GOLD)
+      setFill(doc, C_GOLD_LIGHT)
+      setDraw(doc, C_GOLD)
       doc.setLineWidth(Math.max(0.15, 0.2 * scale))
       const pillR = pillH / 2
       doc.roundedRect(pillX, pillY, pillW, pillH, pillR, pillR, 'FD')
       // texte doré
-      doc.setTextColor(...C_GOLD_DARK)
+      setText(doc, C_GOLD_DARK)
       doc.text(
         labelText,
         nx + nw / 2,
@@ -289,7 +296,7 @@ export async function downloadFamilyTreePdf(
     // Prénom
     doc.setFont('times', 'bold')
     doc.setFontSize(firstNameSize)
-    doc.setTextColor(...C_INK)
+    setText(doc, C_INK)
     doc.text(person.first_name, nx + nw / 2, firstNameY, {
       align: 'center', maxWidth: nw - nw * 0.10,
     })
@@ -298,7 +305,7 @@ export async function downloadFamilyTreePdf(
     const lastNameY = firstNameY + firstNameSize * 0.4 + nh * 0.05
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(lastNameSize)
-    doc.setTextColor(...C_BROWN)
+    setText(doc, C_BROWN)
     doc.text(person.last_name, nx + nw / 2, lastNameY, {
       align: 'center', maxWidth: nw - nw * 0.10,
     })
@@ -315,7 +322,7 @@ export async function downloadFamilyTreePdf(
     if (lifeText) {
       const dateY = lastNameY + lastNameSize * 0.4 + nh * 0.045
       doc.setFontSize(dateSize)
-      doc.setTextColor(...C_LIGHT_BROWN)
+      setText(doc, C_LIGHT_BROWN)
       doc.text(lifeText, nx + nw / 2, dateY, {
         align: 'center', maxWidth: nw - nw * 0.10,
       })
@@ -325,7 +332,7 @@ export async function downloadFamilyTreePdf(
   // ─── Pied de page
   doc.setFont('times', 'italic')
   doc.setFontSize(18)
-  doc.setTextColor(...C_BROWN)
+  setText(doc, C_BROWN)
   doc.text(
     '" La mémoire d\'un peuple est la racine de son avenir. "',
     PAGE_W / 2, PAGE_H - 45,
@@ -334,7 +341,7 @@ export async function downloadFamilyTreePdf(
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(11)
-  doc.setTextColor(...C_LIGHT_BROWN)
+  setText(doc, C_LIGHT_BROWN)
   doc.text(
     `Archive familiale  ·  ${persons.length} membre${persons.length > 1 ? 's' : ''}`,
     PAGE_W / 2, PAGE_H - 28,
@@ -342,7 +349,8 @@ export async function downloadFamilyTreePdf(
   )
 
   // ─── Téléchargement
-  const familySlug = (familyLabel || 'youm').toLowerCase()
-  const filename = `arbre-famille-${familySlug}-${new Date().toISOString().slice(0, 10)}.pdf`
+  // Nom de fichier propre, sans date ni slug
+  const familyName = (familyLabel || 'Youm').toUpperCase()
+  const filename = `FAMILLE ${familyName} - Arbre généalogique.pdf`
   doc.save(filename)
 }

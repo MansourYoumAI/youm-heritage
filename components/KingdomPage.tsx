@@ -328,19 +328,21 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
               editing={editing}
               onChange={v => draft && setDraft({ ...draft, emblem: v })}
             />
-            <div className="flex-1 min-w-0 space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/70 text-[10px] font-bold uppercase tracking-wide text-heritage-brown">
+            <div className="flex-1 min-w-0 flex flex-col items-start gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/70 text-[10px] font-bold uppercase tracking-wide text-heritage-brown w-fit">
                 <Crown className="w-3 h-3" />
                 Royaume ancestral
-              </div>
-              <EditableText
-                value={k.name}
-                editing={editing}
-                onChange={v => draft && setDraft({ ...draft, name: v })}
-                className="font-display font-bold text-3xl sm:text-5xl text-heritage-ink leading-tight"
-                inputClassName="font-display font-bold text-3xl sm:text-5xl text-heritage-ink"
-              />
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-semibold text-heritage-brown pt-1">
+              </span>
+              <h1 className="w-full">
+                <EditableText
+                  value={k.name}
+                  editing={editing}
+                  onChange={v => draft && setDraft({ ...draft, name: v })}
+                  className="block font-display font-bold text-3xl sm:text-5xl text-heritage-ink leading-tight"
+                  inputClassName="font-display font-bold text-3xl sm:text-5xl text-heritage-ink"
+                />
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-semibold text-heritage-brown">
                 <span className="inline-flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 flex-shrink-0" />
                   <EditableText
@@ -618,8 +620,7 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
 
           <p className="text-[11px] text-heritage-brown italic text-center pt-2">
             La liste se met à jour automatiquement à partir du champ « titre royal » de
-            chaque fiche. Ajoute « {slug === 'fouta-toro' ? 'Fouta' : slug.charAt(0).toUpperCase() + slug.slice(1)} » dans le titre
-            d&apos;une personne pour qu&apos;elle apparaisse ici.
+            chaque fiche.
           </p>
         </section>
 

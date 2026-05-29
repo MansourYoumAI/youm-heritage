@@ -198,15 +198,17 @@ export function computeLayout(
       } else {
         // Cas spécial : les parents DIRECTS du focal sont placés serrés (comme
         // un couple normal), sans réserver la largeur de leur ascendance.
-        // Cela évite la dérive horizontale quand un côté a une généalogie
-        // beaucoup plus profonde que l'autre. Les générations supérieures
-        // s'étalent librement au-dessus (sur d'autres lignes Y, donc pas de
-        // chevauchement avec le couple voisin).
         const isFocalLevel = recursionPath.size === 0
         const lw = isFocalLevel ? NODE_W : pedigreeWidth(father, new Set())
         const rw = isFocalLevel ? NODE_W : pedigreeWidth(mother, new Set())
-        placePedigree(father, x - COUPLE_GAP / 2 - lw / 2, parentY, newPath)
-        placePedigree(mother, x + COUPLE_GAP / 2 + rw / 2, parentY, newPath)
+        // On utilise la largeur MAX pour les deux côtés : ainsi le milieu du
+        // couple est exactement aligné verticalement avec l'enfant en-dessous
+        // (= ligne de filiation perpendiculaire pour 1 enfant, symétrique pour N).
+        // Le côté qui a moins d'ascendance se retrouve avec un peu d'espace
+        // libre, c'est OK et garantit la symétrie visuelle.
+        const maxPw = Math.max(lw, rw)
+        placePedigree(father, x - COUPLE_GAP / 2 - maxPw / 2, parentY, newPath)
+        placePedigree(mother, x + COUPLE_GAP / 2 + maxPw / 2, parentY, newPath)
       }
     } else if (father) {
       placePedigree(father, x, parentY, newPath)
@@ -359,8 +361,11 @@ export function computeLayout(
     for (const kid of focalKids) entry.kids.add(kid)
   }
 
-  // Trace les edges parent-enfant : depuis le milieu du couple si applicable,
-  // sinon depuis chaque parent individuellement.
+  // Trace les edges parent-enfant en T : un trait vertical part du milieu
+  // du couple, une barre horizontale relie tous les enfants (si plusieurs),
+  // et un trait vertical descend depuis la barre jusqu'à chaque enfant.
+  // Pour 1 enfant centré sous le couple, l'ensemble forme une seule ligne
+  // verticale parfaite (perpendiculaire au couple).
   const childrenWithCoupleEdge = new Set<string>()
   for (const [, entry] of parentalCouples) {
     const posA = positions.get(entry.p1)
@@ -368,16 +373,42 @@ export function computeLayout(
     if (!posA || !posB) continue
     const midX = (posA.x + posB.x) / 2 + NODE_W / 2
     const coupleY = (posA.y + posB.y) / 2 + NODE_H / 2
-    for (const kid of entry.kids) {
-      if (childrenWithCoupleEdge.has(kid)) continue
-      const kidPos = positions.get(kid)
-      if (!kidPos) continue
-      childrenWithCoupleEdge.add(kid)
+
+    const kidPositions = Array.from(entry.kids)
+      .map(kid => ({ id: kid, pos: positions.get(kid) }))
+      .filter((k): k is { id: string; pos: { x: number; y: number } } => !!k.pos)
+    if (kidPositions.length === 0) continue
+    kidPositions.forEach(k => childrenWithCoupleEdge.add(k.id))
+
+    // Les enfants sont supposés au même Y (siblings). On prend le Y du 1er.
+    const kidY = kidPositions[0].pos.y
+    // Barre horizontale à mi-chemin verticalement entre le couple et les enfants.
+    const busBarY = (coupleY + kidY) / 2
+
+    // 1) Trait vertical du milieu du couple jusqu'à la barre.
+    parentEdges.push({
+      x1: midX, y1: coupleY,
+      x2: midX, y2: busBarY,
+    })
+
+    // 2) Barre horizontale (si plusieurs enfants ou si l'enfant n'est pas
+    // aligné avec le milieu du couple).
+    const kidXs = kidPositions.map(k => k.pos.x + NODE_W / 2)
+    const minX = Math.min(midX, ...kidXs)
+    const maxX = Math.max(midX, ...kidXs)
+    if (maxX - minX > 0.5) {
       parentEdges.push({
-        x1: midX,
-        y1: coupleY,
-        x2: kidPos.x + NODE_W / 2,
-        y2: kidPos.y,
+        x1: minX, y1: busBarY,
+        x2: maxX, y2: busBarY,
+      })
+    }
+
+    // 3) Trait vertical de la barre jusqu'au sommet de chaque enfant.
+    for (const k of kidPositions) {
+      const kx = k.pos.x + NODE_W / 2
+      parentEdges.push({
+        x1: kx, y1: busBarY,
+        x2: kx, y2: kidY,
       })
     }
   }
