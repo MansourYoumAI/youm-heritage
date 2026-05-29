@@ -6,7 +6,7 @@ export const H_GAP = 40
 // Écart minimum entre deux sous-arbres frères au même niveau.
 // Il sert de base : chaque génération au-dessus s'élargit automatiquement
 // pour absorber la totalité de ses propres ancêtres.
-export const COUPLE_GAP = 120
+export const COUPLE_GAP = 70
 // Écart entre frère et sœur quand ils se marient entre eux (mariage consanguin).
 // On les place côte à côte plutôt qu'éloignés comme un couple normal.
 export const SIBLING_GAP = 24
@@ -218,28 +218,52 @@ export function computeLayout(
   // Place le focal à l'origine. Ses ancêtres remontent au-dessus.
   placePedigree(focal, 0, 0, new Set())
 
-  // ─── Conjoint·e·s du focal : positionné·e·s sur le côté (long lien SPOUSE_GAP)
+  // ─── Conjoint·e·s du focal + enfants
+  // Le/la 1er·ère conjoint·e est placé·e juste à côté du focal. S'il y a
+  // plusieurs enfants, on s'assure que le/la conjoint·e soit suffisamment
+  // éloigné·e pour que la rangée d'enfants (centrée entre le focal et le/la
+  // conjoint·e) ne chevauche pas le/la conjoint·e.
   const focalPos = positions.get(focal)!
   const focalGender = personsMap.get(focal)?.gender
   const focalSpouses = (spousesOf.get(focal) || []).filter(s => personsMap.has(s))
+  const focalKids = (childrenOf.get(focal) || []).filter(k => personsMap.has(k))
+
+  const kidsTotalWidth = focalKids.length > 0
+    ? focalKids.length * NODE_W + (focalKids.length - 1) * H_GAP
+    : 0
+
+  // Distance min focal↔conjoint·e pour absorber la rangée d'enfants au milieu.
+  // On veut : (offset - NODE_W) >= kidsTotalWidth + 2*marge
+  // soit : offset >= NODE_W + kidsTotalWidth + 2*marge
+  // (marge = H_GAP, ce qui laisse un espace propre de chaque côté).
+  const baseSpouseOffset = NODE_W + SPOUSE_GAP
+  const widthBetween = kidsTotalWidth > 0
+    ? Math.max(SPOUSE_GAP, kidsTotalWidth - NODE_W + 2 * H_GAP)
+    : SPOUSE_GAP
+  const firstSpouseOffset = NODE_W + widthBetween
+
   focalSpouses.forEach((sp, i) => {
     if (positions.has(sp)) return
     // Si focal est homme, conjoint·e à droite ; sinon à gauche
-    const baseX = focalPos.x
-    const offset = (NODE_W + SPOUSE_GAP) * (i + 1)
-    const spouseX = focalGender === 'femme' ? baseX - offset : baseX + offset
+    const offset = i === 0 ? firstSpouseOffset : baseSpouseOffset * (i + 1)
+    const spouseX = focalGender === 'femme'
+      ? focalPos.x - offset
+      : focalPos.x + offset
     positions.set(sp, { x: spouseX, y: focalPos.y })
   })
 
-  // ─── Enfants du focal : DIRECTEMENT sous le focal (pas au milieu du couple).
-  // Cela garantit que l'enfant principal apparait juste en dessous du focal,
-  // peu importe où le/la conjoint·e est positionné·e.
-  const focalKids = (childrenOf.get(focal) || []).filter(k => personsMap.has(k))
   if (focalKids.length > 0) {
-    const centerX = focalPos.x + NODE_W / 2
-    const total = focalKids.length * NODE_W + (focalKids.length - 1) * H_GAP
+    // Centrer la rangée d'enfants entre le focal et son 1er conjoint·e
+    // (s'il existe), sinon directement sous le focal.
+    let centerX = focalPos.x + NODE_W / 2
+    if (focalSpouses.length > 0) {
+      const firstSpousePos = positions.get(focalSpouses[0])
+      if (firstSpousePos) {
+        centerX = (focalPos.x + NODE_W / 2 + firstSpousePos.x + NODE_W / 2) / 2
+      }
+    }
     const kidsY = focalPos.y + NODE_H + V_GAP
-    const startX = centerX - total / 2
+    const startX = centerX - kidsTotalWidth / 2
     focalKids.forEach((kid, i) => {
       if (positions.has(kid)) return
       positions.set(kid, { x: startX + i * (NODE_W + H_GAP), y: kidsY })

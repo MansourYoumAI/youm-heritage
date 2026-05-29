@@ -92,11 +92,13 @@ export function getAvatarColors(person: Pick<Person, 'gender' | 'is_royal'>): {
 }
 
 // Détermine le "focal" d'un arbre familial selon le nom de famille.
-// - 'youm' : on cherche les personnes de la famille Youm (nom = Youm)
-// - 'gueye' : on cherche les personnes de la famille Gueye (nom = Gueye OU
-//   nom de jeune fille = Gueye). Fatou Youm née Gueye qualifie pour Gueye.
-// On retourne la personne avec la plus grande profondeur d'ancêtres et
-// idéalement sans enfants (la "feuille" du bas).
+// Logique :
+//  1. On filtre les Youm (par last_name).
+//  2. Parmi les feuilles (sans enfants), on trouve la profondeur d'ascendance max.
+//  3. Si ≥ 2 feuilles à cette profondeur partagent un parent, ce parent devient
+//     le focal — ainsi ses enfants (frères/sœurs) apparaissent tous en ligne
+//     sous lui, et son conjoint·e à côté.
+//  4. Sinon (feuille unique), le focal est la feuille la plus profonde.
 export function findFamilyFocal(
   persons: Person[],
   relationships: Relationship[],
@@ -129,17 +131,54 @@ export function findFamilyFocal(
     return mn === 'gueye' || ln === 'gueye'
   })
 
+  if (candidates.length === 0) return undefined
+
+  // 1. Feuilles (sans enfants) parmi les candidats
+  const leaves = candidates.filter(c => (childrenOf.get(c.id) || []).length === 0)
+
+  if (leaves.length > 0) {
+    // 2. Profondeur max parmi les feuilles
+    let maxLeafDepth = -1
+    for (const l of leaves) {
+      const d = depthOf(l.id)
+      if (d > maxLeafDepth) maxLeafDepth = d
+    }
+    const deepestLeaves = leaves.filter(l => depthOf(l.id) === maxLeafDepth)
+
+    // 3. Si ≥ 2 feuilles partagent un parent, ce parent devient le focal
+    if (deepestLeaves.length >= 2) {
+      const parentCounts = new Map<string, number>()
+      for (const l of deepestLeaves) {
+        for (const p of parentsOf.get(l.id) || []) {
+          parentCounts.set(p, (parentCounts.get(p) || 0) + 1)
+        }
+      }
+      let sharedParent: string | undefined
+      let bestCount = 0
+      let bestIsMale = false
+      for (const [pid, count] of parentCounts) {
+        if (count < 2) continue
+        const isMale = persons.find(x => x.id === pid)?.gender === 'homme'
+        // Préfère le parent qui rassemble le plus de feuilles, puis le père
+        if (count > bestCount || (count === bestCount && isMale && !bestIsMale)) {
+          bestCount = count
+          bestIsMale = isMale
+          sharedParent = pid
+        }
+      }
+      if (sharedParent) return sharedParent
+    }
+
+    // 4. Feuille unique la plus profonde
+    return deepestLeaves[0].id
+  }
+
+  // 5. Pas de feuille — fallback : la personne la plus profonde
   let best: string | undefined
-  let bestScore = -Infinity
+  let bestDepth = -1
   for (const c of candidates) {
     const d = depthOf(c.id)
-    const hasKids = (childrenOf.get(c.id) || []).length > 0
-    // Préférer profondeur élevée, puis préférer feuille (sans enfants)
-    const score = d * 10 + (hasKids ? 0 : 1)
-    if (score > bestScore) {
-      bestScore = score
-      best = c.id
-    }
+    if (d > bestDepth) { bestDepth = d; best = c.id }
   }
   return best
 }

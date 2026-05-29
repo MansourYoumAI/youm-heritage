@@ -44,7 +44,9 @@ export default function FamilyTree({
 
   const canvasWidth = Math.max(layout.width, 800)
   const treeHeight = Math.max(layout.height, 600)
-  const TOP_PADDING = Math.max(treeHeight, 600)
+  // Marge fixe au-dessus pour permettre un peu de scroll vers le haut sans
+  // gaspiller la moitié du canvas en espace vide.
+  const TOP_PADDING = 120
   const canvasHeight = treeHeight + TOP_PADDING
 
   // Position du focal pour le centrage initial
