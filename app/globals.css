@@ -1,0 +1,292 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #F9F6EF;
+    --surface: #FFFFFF;
+    --primary: #C2541A;
+    --primary-dark: #8B3A10;
+    --gold: #C4922A;
+    --gold-light: #F5E9C4;
+    --text: #1A0F00;
+    --muted: #705840;
+    --border: #E0D0B8;
+    --radius: 0.5rem;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--text);
+    font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-playfair), Georgia, 'Times New Roman', serif;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text);
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button {
+    cursor: pointer;
+    font-family: var(--font-inter), system-ui, sans-serif;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Scrollbar personnalisée */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
+}
+
+@layer components {
+  /* Boutons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           px-6 py-3 rounded-lg
+           bg-terracotta-500 text-white font-semibold text-base
+           transition-all duration-200
+           hover:bg-terracotta-600 active:bg-terracotta-700
+           focus:outline-none focus:ring-2 focus:ring-terracotta-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: 48px;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           px-6 py-3 rounded-lg
+           bg-white text-heritage-ink font-semibold text-base
+           border-2 border-parchment-400
+           transition-all duration-200
+           hover:border-terracotta-500 hover:text-terracotta-500
+           focus:outline-none focus:ring-2 focus:ring-terracotta-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: 48px;
+  }
+
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2
+           px-6 py-3 rounded-lg
+           font-semibold text-base
+           transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: 48px;
+    background: linear-gradient(135deg, #C4922A 0%, #B8821F 100%);
+    color: #1A0F00;
+    box-shadow: 0 2px 8px rgba(196, 146, 42, 0.3);
+  }
+
+  .btn-gold:hover {
+    background: linear-gradient(135deg, #D4A23A 0%, #C8922F 100%);
+    box-shadow: 0 4px 12px rgba(196, 146, 42, 0.4);
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-xl border border-parchment-400 shadow-warm-sm;
+  }
+
+  .card-royal {
+    @apply bg-white rounded-xl border-2 shadow-warm-md;
+    border-color: #C4922A;
+    box-shadow: 0 4px 20px rgba(196, 146, 42, 0.15);
+  }
+
+  /* Inputs */
+  .input {
+    @apply w-full px-4 py-3 rounded-lg
+           bg-white border-2 border-parchment-400
+           text-heritage-ink text-base font-medium
+           placeholder:text-parchment-500 placeholder:font-normal
+           transition-colors duration-150
+           focus:outline-none focus:border-terracotta-500;
+    min-height: 48px;
+  }
+
+  .label {
+    @apply block text-sm font-semibold text-heritage-ink mb-1.5;
+  }
+
+  /* Badges */
+  .badge-dynasty {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold;
+    background: linear-gradient(135deg, #F5E9C4 0%, #EDD99A 100%);
+    color: #8B6214;
+    border: 1px solid #C4922A;
+  }
+
+  /* Section titre */
+  .section-title {
+    @apply text-2xl font-display font-bold text-heritage-ink;
+  }
+
+  .section-subtitle {
+    @apply text-base font-medium text-heritage-brown mt-1;
+  }
+
+  /* Texture de fond */
+  .bg-parchment-texture {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(194, 84, 26, 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(196, 146, 42, 0.04) 0%, transparent 40%);
+  }
+
+  /* Séparateur doré */
+  .divider-gold {
+    @apply w-16 h-0.5 my-4;
+    background: linear-gradient(90deg, transparent, #C4922A, transparent);
+  }
+
+  /* Profil royal — en-tête */
+  .royal-header {
+    background: linear-gradient(135deg, #1A0F00 0%, #2C1810 50%, #1E3A2F 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .royal-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 50%, rgba(196, 146, 42, 0.2) 0%, transparent 60%);
+  }
+
+  /* Navigation mobile */
+  .nav-item {
+    @apply flex flex-col items-center gap-1 px-4 py-2
+           text-xs font-semibold text-heritage-brown
+           transition-colors duration-150;
+    min-width: 64px;
+  }
+
+  .nav-item.active {
+    @apply text-terracotta-500;
+  }
+
+  /* Audio player */
+  .waveform-bar {
+    @apply rounded-full transition-all duration-75;
+    background: #D4C4A8;
+    width: 3px;
+  }
+
+  .waveform-bar.played {
+    background: #C2541A;
+  }
+
+  /* Texte tronqué */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* Animations */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0ebe3 25%, #e8dbc5 50%, #f0ebe3 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+/* Arbre généalogique — conteneur zoom/pan */
+.tree-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+.tree-container:active {
+  cursor: grabbing;
+}
+
+/* Nœud de l'arbre */
+.tree-node {
+  position: absolute;
+  transition: box-shadow 0.2s;
+}
+
+.tree-node:hover {
+  z-index: 10;
+}
+
+/* Page principale — offset pour la navigation */
+.page-content {
+  padding-bottom: 5rem; /* espace pour la nav mobile */
+}
+
+@media (min-width: 768px) {
+  .page-content {
+    padding-bottom: 0;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
