@@ -321,8 +321,71 @@ export function computeLayout(
     }
   }
 
-  // Arêtes parent-enfant en V (un trait diagonal par parent)
+  // ─── Couples parentaux : paires mariées qui partagent au moins un enfant.
+  // Pour ces couples, on tracera UN seul trait depuis le milieu de la ligne
+  // de couple jusqu'à chaque enfant — convention généalogique standard.
+  type ParentalCouple = { p1: string; p2: string; kids: Set<string> }
+  const parentalCouples = new Map<string, ParentalCouple>()
+  const makeCoupleKey = (a: string, b: string) => [a, b].sort().join('::')
+
+  for (const [childId, parents] of parentsOf) {
+    for (let i = 0; i < parents.length; i++) {
+      for (let j = i + 1; j < parents.length; j++) {
+        const a = parents[i], b = parents[j]
+        if (!(spousesOf.get(a) || []).includes(b)) continue
+        const key = makeCoupleKey(a, b)
+        let entry = parentalCouples.get(key)
+        if (!entry) {
+          entry = { p1: a, p2: b, kids: new Set() }
+          parentalCouples.set(key, entry)
+        }
+        entry.kids.add(childId)
+      }
+    }
+  }
+
+  // Lien implicite : le focal + son/sa 1er·ère conjoint·e sont considéré·e·s
+  // co-parents des enfants du focal, même si la relation parent-enfant n'est
+  // pas explicitement enregistrée pour le/la conjoint·e (cas typique où on
+  // ajoute les enfants AVANT le/la conjoint·e).
+  if (focalSpouses.length > 0 && focalKids.length > 0) {
+    const fsp = focalSpouses[0]
+    const key = makeCoupleKey(focal, fsp)
+    let entry = parentalCouples.get(key)
+    if (!entry) {
+      entry = { p1: focal, p2: fsp, kids: new Set() }
+      parentalCouples.set(key, entry)
+    }
+    for (const kid of focalKids) entry.kids.add(kid)
+  }
+
+  // Trace les edges parent-enfant : depuis le milieu du couple si applicable,
+  // sinon depuis chaque parent individuellement.
+  const childrenWithCoupleEdge = new Set<string>()
+  for (const [, entry] of parentalCouples) {
+    const posA = positions.get(entry.p1)
+    const posB = positions.get(entry.p2)
+    if (!posA || !posB) continue
+    const midX = (posA.x + posB.x) / 2 + NODE_W / 2
+    const coupleY = (posA.y + posB.y) / 2 + NODE_H / 2
+    for (const kid of entry.kids) {
+      if (childrenWithCoupleEdge.has(kid)) continue
+      const kidPos = positions.get(kid)
+      if (!kidPos) continue
+      childrenWithCoupleEdge.add(kid)
+      parentEdges.push({
+        x1: midX,
+        y1: coupleY,
+        x2: kidPos.x + NODE_W / 2,
+        y2: kidPos.y,
+      })
+    }
+  }
+
+  // Fallback : enfants sans couple parental identifié → trait individuel
+  // depuis chaque parent.
   for (const [childId, parentList] of parentsOf) {
+    if (childrenWithCoupleEdge.has(childId)) continue
     const childPos = positions.get(childId)
     if (!childPos) continue
     const childCenterX = childPos.x + NODE_W / 2
