@@ -1,13 +1,16 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Crown, MapPin, Calendar, Edit2, ArrowLeft, Users, BookOpen } from 'lucide-react'
+import { Crown, MapPin, Calendar, Edit2, ArrowLeft, Users, BookOpen, ArrowRight } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import SouvenirsSection from '@/components/SouvenirsSection'
 import ClickablePhoto from '@/components/ClickablePhoto'
 import DeleteButton from '@/components/DeleteButton'
 import { createClient } from '@/lib/supabase-server'
-import { getInitials, formatLifespan, getBirthPlaceDisplay, getAvatarColors } from '@/lib/utils'
+import {
+  getInitials, formatLifespan, getBirthPlaceDisplay, getAvatarColors,
+  getKingdomFromTitle, KINGDOM_LABELS, KINGDOM_EMBLEMS,
+} from '@/lib/utils'
 import type { Person } from '@/lib/types'
 
 interface Props {
@@ -130,6 +133,13 @@ export default async function ProfilPage({ params }: Props) {
                 </p>
               )}
 
+              {person.is_royal && person.royal_title && (
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-royal-gold-light text-royal-gold-dark text-xs font-bold uppercase tracking-wide border border-royal-gold/40">
+                  <Crown className="w-3.5 h-3.5" />
+                  {person.royal_title}
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-3">
                 {(person.birth_date || person.death_date) && (
                   <div className="flex items-center gap-1.5 text-sm font-medium text-heritage-brown">
@@ -147,6 +157,36 @@ export default async function ProfilPage({ params }: Props) {
             </div>
           </div>
         </section>
+
+        {/* Invitation à découvrir la fiche du royaume si applicable */}
+        {(() => {
+          const kingdom = getKingdomFromTitle(person.royal_title)
+          if (!kingdom) return null
+          return (
+            <Link
+              href={`/${kingdom}`}
+              className="group block card p-5 mb-6 bg-gradient-to-br from-royal-gold-light to-parchment-100 border-2 border-royal-gold/40 hover:shadow-warm-lg hover:-translate-y-0.5 transition-all"
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-5xl flex-shrink-0 leading-none select-none" aria-hidden>
+                  {KINGDOM_EMBLEMS[kingdom]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-royal-gold-dark">
+                    Souverain·e du
+                  </p>
+                  <p className="font-display font-bold text-xl text-heritage-ink leading-tight">
+                    Royaume du {KINGDOM_LABELS[kingdom]}
+                  </p>
+                  <p className="text-sm font-medium text-heritage-brown mt-1">
+                    Découvrir la fiche historique et les autres souverains de la famille
+                  </p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-royal-gold-dark flex-shrink-0 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          )
+        })()}
 
         {person.biography && (
           <section className="card p-6 mb-6">

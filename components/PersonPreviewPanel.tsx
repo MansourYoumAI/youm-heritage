@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation'
 import { X, Crown, ArrowRight, Sparkles, Calendar, Mic, Pencil, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import type { Person, Souvenir } from '@/lib/types'
-import { getFullName, formatLifespan, parseYearFromDate, getAvatarColors } from '@/lib/utils'
+import {
+  getFullName, formatLifespan, parseYearFromDate, getAvatarColors,
+  getKingdomFromTitle, KINGDOM_LABELS, KINGDOM_EMBLEMS,
+} from '@/lib/utils'
 import Lightbox from './Lightbox'
 import DeleteButton from './DeleteButton'
 
@@ -106,6 +109,9 @@ export default function PersonPreviewPanel({ person, onClose, onDeleted }: Perso
                   <p className="text-sm font-medium text-heritage-brown mt-0.5">
                     née {person.maiden_name}
                   </p>
+                )}
+                {person.is_royal && person.royal_title && (
+                  <RoyalTitlePill royalTitle={person.royal_title} onClose={onClose} router={router} />
                 )}
                 {lifespan && (
                   <div className="flex items-center gap-1.5 text-sm font-medium text-heritage-brown mt-1">
@@ -213,6 +219,43 @@ export default function PersonPreviewPanel({ person, onClose, onDeleted }: Perso
         />
       )}
     </>
+  )
+}
+
+// Bulle dorée cliquable affichant le titre royal.
+// Si le titre correspond à un royaume (Cayor / Baol / Fouta-Toro), un clic
+// navigue vers la fiche du royaume. Sinon, la bulle est juste un badge.
+function RoyalTitlePill({
+  royalTitle, onClose, router,
+}: {
+  royalTitle: string
+  onClose: () => void
+  router: ReturnType<typeof useRouter>
+}) {
+  const kingdom = getKingdomFromTitle(royalTitle)
+  const baseClasses = 'inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-full bg-royal-gold-light text-royal-gold-dark text-[10px] font-bold uppercase tracking-wide border border-royal-gold/40'
+  if (!kingdom) {
+    return (
+      <span className={baseClasses}>
+        <Crown className="w-3 h-3" />
+        {royalTitle}
+      </span>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onClose()
+        router.push(`/${kingdom}`)
+      }}
+      title={`Découvrir le ${KINGDOM_LABELS[kingdom]}`}
+      className={`${baseClasses} hover:bg-royal-gold hover:text-white transition-colors cursor-pointer`}
+    >
+      <Crown className="w-3 h-3" />
+      <span className="truncate">{royalTitle}</span>
+      <ArrowRight className="w-3 h-3" />
+    </button>
   )
 }
 

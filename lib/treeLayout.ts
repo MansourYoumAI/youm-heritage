@@ -196,8 +196,15 @@ export function computeLayout(
           placePedigree(sharedGP.mother, x, grandY, newPath)
         }
       } else {
-        const lw = pedigreeWidth(father, new Set())
-        const rw = pedigreeWidth(mother, new Set())
+        // Cas spécial : les parents DIRECTS du focal sont placés serrés (comme
+        // un couple normal), sans réserver la largeur de leur ascendance.
+        // Cela évite la dérive horizontale quand un côté a une généalogie
+        // beaucoup plus profonde que l'autre. Les générations supérieures
+        // s'étalent librement au-dessus (sur d'autres lignes Y, donc pas de
+        // chevauchement avec le couple voisin).
+        const isFocalLevel = recursionPath.size === 0
+        const lw = isFocalLevel ? NODE_W : pedigreeWidth(father, new Set())
+        const rw = isFocalLevel ? NODE_W : pedigreeWidth(mother, new Set())
         placePedigree(father, x - COUPLE_GAP / 2 - lw / 2, parentY, newPath)
         placePedigree(mother, x + COUPLE_GAP / 2 + rw / 2, parentY, newPath)
       }

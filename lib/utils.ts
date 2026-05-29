@@ -144,6 +144,30 @@ export function findFamilyFocal(
   return best
 }
 
+// À partir d'un titre royal (ex. "Damel du Cayor"), retourne le slug du royaume
+// correspondant (`cayor`, `baol`, `fouta-toro`) ou null si aucun match.
+export type KingdomSlugLite = 'cayor' | 'baol' | 'fouta-toro'
+
+export const KINGDOM_LABELS: Record<KingdomSlugLite, string> = {
+  cayor: 'Cayor',
+  baol: 'Baol',
+  'fouta-toro': 'Fouta-Toro',
+}
+
+export const KINGDOM_EMBLEMS: Record<KingdomSlugLite, string> = {
+  cayor: '👑',
+  baol: '🏛️',
+  'fouta-toro': '🕌',
+}
+
+export function getKingdomFromTitle(royalTitle: string | null | undefined): KingdomSlugLite | null {
+  if (!royalTitle) return null
+  if (/fouta(-?toro)?/i.test(royalTitle)) return 'fouta-toro'
+  if (/cayor/i.test(royalTitle)) return 'cayor'
+  if (/baol/i.test(royalTitle)) return 'baol'
+  return null
+}
+
 // Extrait une année (number) d'une chaîne de date flexible :
 // "1970" -> 1970, "vers 1950" -> 1950, "années 60" -> 1960, "1970-05-15" -> 1970
 export function parseYearFromDate(dateStr: string | null | undefined): number | null {
