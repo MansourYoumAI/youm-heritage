@@ -1,12 +1,12 @@
 import type { Person, Relationship } from './types'
 
 export const NODE_W = 168
-export const NODE_H = 152
-export const H_GAP = 40
+export const NODE_H = 140
+export const H_GAP = 30
 // Écart minimum entre deux sous-arbres frères au même niveau.
 // Il sert de base : chaque génération au-dessus s'élargit automatiquement
 // pour absorber la totalité de ses propres ancêtres.
-export const COUPLE_GAP = 70
+export const COUPLE_GAP = 50
 // Écart entre frère et sœur quand ils se marient entre eux (mariage consanguin).
 // On les place côte à côte plutôt qu'éloignés comme un couple normal.
 export const SIBLING_GAP = 24
@@ -196,19 +196,15 @@ export function computeLayout(
           placePedigree(sharedGP.mother, x, grandY, newPath)
         }
       } else {
-        // Cas spécial : les parents DIRECTS du focal sont placés serrés (comme
-        // un couple normal), sans réserver la largeur de leur ascendance.
+        // Placement asymétrique : chaque côté absorbe sa propre largeur
+        // d'ascendance. Le couple est donc plus serré quand un seul côté
+        // est profond. Le rendu T-bar des lignes de filiation gère l'asymétrie
+        // proprement (vertical + horizontal + vertical).
         const isFocalLevel = recursionPath.size === 0
         const lw = isFocalLevel ? NODE_W : pedigreeWidth(father, new Set())
         const rw = isFocalLevel ? NODE_W : pedigreeWidth(mother, new Set())
-        // On utilise la largeur MAX pour les deux côtés : ainsi le milieu du
-        // couple est exactement aligné verticalement avec l'enfant en-dessous
-        // (= ligne de filiation perpendiculaire pour 1 enfant, symétrique pour N).
-        // Le côté qui a moins d'ascendance se retrouve avec un peu d'espace
-        // libre, c'est OK et garantit la symétrie visuelle.
-        const maxPw = Math.max(lw, rw)
-        placePedigree(father, x - COUPLE_GAP / 2 - maxPw / 2, parentY, newPath)
-        placePedigree(mother, x + COUPLE_GAP / 2 + maxPw / 2, parentY, newPath)
+        placePedigree(father, x - COUPLE_GAP / 2 - lw / 2, parentY, newPath)
+        placePedigree(mother, x + COUPLE_GAP / 2 + rw / 2, parentY, newPath)
       }
     } else if (father) {
       placePedigree(father, x, parentY, newPath)
@@ -277,7 +273,7 @@ export function computeLayout(
   // On les retrouvera en switchant sur l'autre arbre (Youm ↔ Gueye).
 
   // ─── Normalisation : décaler pour que minX/minY soient à 0 (+ padding)
-  const PADDING = 80
+  const PADDING = 40
   const xs = Array.from(positions.values()).map(p => p.x)
   const ys = Array.from(positions.values()).map(p => p.y)
   const minX = (xs.length ? Math.min(...xs) : 0) - PADDING

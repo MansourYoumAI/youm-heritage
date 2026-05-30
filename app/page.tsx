@@ -7,13 +7,14 @@ import Header from '@/components/layout/Header'
 import FamilyTree from '@/components/tree/FamilyTree'
 import PersonPreviewPanel from '@/components/PersonPreviewPanel'
 import BulkDeleteModal from '@/components/BulkDeleteModal'
-import type { Person, Relationship } from '@/lib/types'
+import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { createClient } from '@/lib/supabase'
 import { findFamilyFocal } from '@/lib/utils'
 
 export default function HomePage() {
   const [persons, setPersons] = useState<Person[]>([])
   const [relationships, setRelationships] = useState<Relationship[]>([])
+  const [souvenirs, setSouvenirs] = useState<Souvenir[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
 
@@ -29,7 +30,7 @@ export default function HomePage() {
   useEffect(() => {
     async function loadData() {
       const supabase = createClient()
-      const [{ data: ps }, { data: rels }] = await Promise.all([
+      const [{ data: ps }, { data: rels }, { data: sv }] = await Promise.all([
         supabase
           .from('persons')
           .select('*')
@@ -37,9 +38,14 @@ export default function HomePage() {
         supabase
           .from('relationships')
           .select('*'),
+        supabase
+          .from('souvenirs')
+          .select('*')
+          .not('person_id', 'is', null),
       ])
       setPersons(ps || [])
       setRelationships(rels || [])
+      setSouvenirs(sv || [])
       setLoading(false)
     }
     loadData()
@@ -83,7 +89,19 @@ export default function HomePage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [selectedIds, selectionMode, showBulkDelete])
 
-  // Recherche : retourne la liste des personnes qui matchent la requête
+  // Souvenirs indexés par person_id
+  const souvenirsByPerson = useMemo(() => {
+    const m = new Map<string, Souvenir[]>()
+    for (const s of souvenirs) {
+      if (!s.person_id) continue
+      const arr = m.get(s.person_id) || []
+      arr.push(s)
+      m.set(s.person_id, arr)
+    }
+    return m
+  }, [souvenirs])
+
+  // Recherche : alphabétique + dédupliquée (par prénom+nom+année si présente)
   const searchMatches = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return null
@@ -92,7 +110,23 @@ export default function HomePage() {
       const text = `${p.first_name || ''} ${p.last_name || ''} ${p.maiden_name || ''} ${p.nickname || ''}`.toLowerCase()
       if (text.includes(q)) matches.push(p)
     }
-    return matches
+    // Dédup : si deux personnes ont exactement les mêmes prénom + nom + année
+    // de naissance, on garde la première (probable doublon créé par erreur)
+    const seen = new Set<string>()
+    const deduped: Person[] = []
+    for (const p of matches) {
+      const key = `${(p.first_name || '').trim().toLowerCase()}|${(p.last_name || '').trim().toLowerCase()}|${(p.birth_date || '').trim()}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      deduped.push(p)
+    }
+    // Tri alphabétique (prénom puis nom)
+    deduped.sort((a, b) => {
+      const aName = `${a.first_name || ''} ${a.last_name || ''}`.trim()
+      const bName = `${b.first_name || ''} ${b.last_name || ''}`.trim()
+      return aName.localeCompare(bName, 'fr', { sensitivity: 'base' })
+    })
+    return deduped
   }, [searchQuery, persons])
 
   const searchMatchIds = useMemo(() => {
@@ -106,15 +140,22 @@ export default function HomePage() {
 
       {/* Barre de navigation : recherche, filtres */}
       <div className="bg-white border-b border-parchment-400 px-3 py-1.5 flex items-center gap-2 flex-shrink-0">
-        {/* Recherche par prénom / nom */}
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-heritage-brown opacity-50 pointer-events-none" />
+        {/* Recherche par prénom / nom — discrète : transparente au repos,
+            mise en relief uniquement au focus / quand il y a du texte */}
+        <div className="relative w-44 sm:w-56">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-heritage-brown opacity-40 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Rechercher un nom..."
-            className="w-full pl-8 pr-7 py-1 text-xs rounded-full bg-parchment-200 border border-transparent focus:border-terracotta-500 focus:bg-white focus:outline-none transition-colors"
+            placeholder="Rechercher..."
+            className={cn(
+              'w-full pl-7 pr-6 py-1 text-xs rounded-full border outline-none transition-all',
+              'placeholder:text-heritage-brown placeholder:opacity-40',
+              searchQuery
+                ? 'bg-white border-parchment-400 text-heritage-ink'
+                : 'bg-transparent border-transparent text-heritage-ink hover:bg-parchment-100 focus:bg-white focus:border-parchment-400',
+            )}
           />
           {searchQuery && (
             <button
@@ -235,6 +276,7 @@ export default function HomePage() {
               royalFilter={royalFilter}
               centerTargetId={centerTargetId}
               onCenterDone={() => setCenterTargetId(null)}
+              souvenirsByPerson={souvenirsByPerson}
             />
           </div>
         )}

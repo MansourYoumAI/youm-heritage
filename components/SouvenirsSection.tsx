@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase'
 import { useAudioRecorder, MAX_RECORDING_SECONDS } from '@/hooks/useAudioRecorder'
 import type { Souvenir } from '@/lib/types'
 import { parseYearFromDate, formatDuration } from '@/lib/utils'
+import { resizeImage } from '@/lib/imageResize'
 import Lightbox from './Lightbox'
 
 interface SouvenirsSectionProps {
@@ -256,8 +257,20 @@ function SouvenirForm({ personId, kingdomSlug, onSaved }: SouvenirFormProps) {
     let imageUrl: string | null = null
     let imagePath: string | null = null
     if (imageFile) {
-      const ext = imageFile.name.split('.').pop() || 'jpg'
-      const result = await uploadFile('souvenirs', imageFile, ext)
+      // Redimensionne + ré-encode pour alléger
+      let upload: File
+      try {
+        upload = await resizeImage(imageFile, {
+          maxDim: 1280, quality: 0.85,
+          baseName: `souvenir-${title.trim() || Date.now().toString(36)}`,
+        })
+      } catch (e) {
+        setError(`Erreur image : ${(e as Error).message}`)
+        setSaving(false)
+        return
+      }
+      const ext = upload.name.split('.').pop() || 'jpg'
+      const result = await uploadFile('souvenirs', upload, ext)
       if (!result) { setSaving(false); return }
       imageUrl = result.url
       imagePath = result.path

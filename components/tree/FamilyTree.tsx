@@ -2,7 +2,7 @@
 
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
-import type { Person, Relationship } from '@/lib/types'
+import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { computeLayout, NODE_W, NODE_H } from '@/lib/treeLayout'
 import PersonNode from './PersonNode'
 import { ZoomIn, ZoomOut, Maximize2, User } from 'lucide-react'
@@ -19,6 +19,8 @@ interface FamilyTreeProps {
   royalFilter?: boolean
   centerTargetId?: string | null
   onCenterDone?: () => void
+  /** Map person_id → souvenirs[], pour afficher l'indicateur de souvenirs */
+  souvenirsByPerson?: Map<string, Souvenir[]>
 }
 
 export default function FamilyTree({
@@ -33,6 +35,7 @@ export default function FamilyTree({
   royalFilter = false,
   centerTargetId = null,
   onCenterDone,
+  souvenirsByPerson,
 }: FamilyTreeProps) {
   const transformRef = useRef<any>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -282,6 +285,7 @@ export default function FamilyTree({
                     (!!searchMatchIds && !searchMatchIds.has(person.id))
                   }
                   highlighted={!!searchMatchIds?.has(person.id)}
+                  souvenirs={souvenirsByPerson?.get(person.id) || []}
                   onClick={() => {
                     if (selectionMode) {
                       const next = new Set(selectedIds)

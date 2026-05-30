@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Crown, Loader2, Check, AlertTriangle, Camera, Trash2, Link2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { BIRTH_PLACES, type Person } from '@/lib/types'
+import { resizeImage } from '@/lib/imageResize'
 
 interface PersonFormProps {
   person?: Person
@@ -156,11 +157,21 @@ export default function PersonForm({ person, mode, onSaved }: PersonFormProps) {
   }
 
   async function uploadPhoto(file: File): Promise<string | null> {
-    const ext = file.name.split('.').pop()
-    const filename = `photo-${Date.now()}.${ext}`
+    // Redimensionne + ré-encode + filename propre dérivé du prénom/nom
+    let upload: File
+    try {
+      const baseName = `${firstName || 'photo'}-${lastName || ''}`.trim() || 'photo'
+      upload = await resizeImage(file, { maxDim: 1024, quality: 0.85, baseName })
+    } catch (e) {
+      setError(`Erreur traitement image : ${(e as Error).message}`)
+      return null
+    }
+    // Suffixe court pour éviter les collisions de noms
+    const ts = Date.now().toString(36)
+    const filename = upload.name.replace(/\.([^.]+)$/, `-${ts}.$1`)
     const { error: uploadErr } = await supabase.storage
       .from('profile-photos')
-      .upload(filename, file, { contentType: file.type })
+      .upload(filename, upload, { contentType: upload.type })
     if (uploadErr) {
       setError(`Erreur upload photo : ${uploadErr.message}`)
       return null
@@ -564,7 +575,7 @@ export default function PersonForm({ person, mode, onSaved }: PersonFormProps) {
             <div className="flex items-center gap-2">
               <Crown className="w-5 h-5 text-royal-gold" />
               <span className="font-semibold text-heritage-ink text-sm">
-                Lignée royale
+                Titre royal
               </span>
             </div>
           </div>

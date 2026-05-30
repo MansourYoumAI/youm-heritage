@@ -2,8 +2,8 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Crown, Plus, Pencil } from 'lucide-react'
-import type { Person } from '@/lib/types'
+import { Crown, Plus, Pencil, Sparkles } from 'lucide-react'
+import type { Person, Souvenir } from '@/lib/types'
 import { getInitials, cn, formatDateFR } from '@/lib/utils'
 
 interface PersonNodeProps {
@@ -12,6 +12,8 @@ interface PersonNodeProps {
   selected?: boolean
   dimmed?: boolean
   highlighted?: boolean
+  /** Souvenirs de cette personne (pour afficher l'indicateur + le popover) */
+  souvenirs?: Souvenir[]
 }
 
 export default function PersonNode({
@@ -20,8 +22,10 @@ export default function PersonNode({
   selected = false,
   dimmed = false,
   highlighted = false,
+  souvenirs = [],
 }: PersonNodeProps) {
   const initials = getInitials(person)
+  const hasSouvenirs = souvenirs.length > 0
 
   const birthText = person.birth_date
     ? `né${person.gender === 'femme' ? 'e' : ''} en ${formatDateFR(person.birth_date)}`
@@ -37,7 +41,7 @@ export default function PersonNode({
       <button
         onClick={onClick}
         className={cn(
-          'w-full h-full rounded-2xl flex flex-col items-center justify-center px-2 py-1.5 gap-0.5',
+          'w-full h-full rounded-2xl flex flex-col items-center justify-center px-2 py-1 gap-0.5',
           'border-2 transition-all duration-200 bg-white',
           'hover:shadow-warm-lg hover:-translate-y-0.5',
           'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-terracotta-500',
@@ -54,7 +58,7 @@ export default function PersonNode({
         } : undefined}
       >
         <div className={cn(
-          'flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center',
+          'flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center',
           'border-2',
           person.is_royal ? 'border-royal-gold' : 'border-parchment-400'
         )}>
@@ -62,13 +66,13 @@ export default function PersonNode({
             <Image
               src={person.profile_picture_url}
               alt={`${person.first_name} ${person.last_name}`}
-              width={64}
-              height={64}
+              width={56}
+              height={56}
               className="w-full h-full object-cover"
             />
           ) : (
             <div className={cn(
-              'w-full h-full flex items-center justify-center text-base font-bold',
+              'w-full h-full flex items-center justify-center text-sm font-bold',
               person.is_royal
                 ? 'bg-royal-gold-light text-royal-gold-dark'
                 : person.gender === 'homme'
@@ -82,7 +86,7 @@ export default function PersonNode({
           )}
         </div>
 
-        <div className="flex-1 min-w-0 w-full text-center mt-1 flex flex-col items-center gap-0.5">
+        <div className="flex-1 min-w-0 w-full text-center mt-0.5 flex flex-col items-center gap-0.5">
           {/* Bulle du titre royal — au-dessus du prénom pour bien le distinguer */}
           {person.is_royal && person.royal_title && (
             <span
@@ -107,11 +111,31 @@ export default function PersonNode({
         </div>
       </button>
 
-      {/* Couronne (lignée royale) */}
+      {/* Couronne (lignée royale) — plus visible : décollée + plus grosse */}
       {person.is_royal && (
-        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-royal-gold flex items-center justify-center shadow-sm z-10 pointer-events-none">
-          <Crown className="w-3 h-3 text-heritage-ink" />
+        <div className="absolute -top-2.5 -right-2.5 w-7 h-7 rounded-full bg-royal-gold flex items-center justify-center shadow-warm-md z-10 pointer-events-none border-2 border-white">
+          <Crown className="w-4 h-4 text-heritage-ink" strokeWidth={2.4} fill="currentColor" fillOpacity={0.2} />
         </div>
+      )}
+
+      {/* Indicateur souvenirs — terracotta pastille en bas-gauche */}
+      {hasSouvenirs && (
+        <button
+          type="button"
+          onClick={e => {
+            e.stopPropagation()
+            onClick()
+          }}
+          title={`${souvenirs.length} souvenir${souvenirs.length > 1 ? 's' : ''} — cliquer pour voir`}
+          className="absolute -bottom-2 -left-2 w-6 h-6 rounded-full bg-terracotta-500 text-white flex items-center justify-center shadow-warm-sm z-20 border-2 border-white hover:scale-110 transition-transform"
+        >
+          <Sparkles className="w-3 h-3" strokeWidth={2.5} />
+          {souvenirs.length > 1 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] px-1 rounded-full bg-heritage-ink text-white text-[8px] font-bold flex items-center justify-center leading-none">
+              {souvenirs.length}
+            </span>
+          )}
+        </button>
       )}
 
       {/* Identifiant unique court (pour distinguer les doublons) */}
