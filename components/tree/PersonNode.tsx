@@ -41,7 +41,7 @@ export default function PersonNode({
       <button
         onClick={onClick}
         className={cn(
-          'w-full h-full rounded-2xl flex flex-col items-center justify-center px-2 py-1 gap-0.5',
+          'w-full h-full rounded-2xl flex flex-row items-center px-2.5 py-2 gap-2.5',
           'border-2 transition-all duration-200 bg-white',
           'hover:shadow-warm-lg hover:-translate-y-0.5',
           'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-terracotta-500',
@@ -57,8 +57,9 @@ export default function PersonNode({
           boxShadow: '0 2px 12px rgba(196, 146, 42, 0.25)',
         } : undefined}
       >
+        {/* Avatar à gauche */}
         <div className={cn(
-          'flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center',
+          'flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center',
           'border-2',
           person.is_royal ? 'border-royal-gold' : 'border-parchment-400'
         )}>
@@ -66,13 +67,13 @@ export default function PersonNode({
             <Image
               src={person.profile_picture_url}
               alt={`${person.first_name} ${person.last_name}`}
-              width={56}
-              height={56}
+              width={64}
+              height={64}
               className="w-full h-full object-cover"
             />
           ) : (
             <div className={cn(
-              'w-full h-full flex items-center justify-center text-sm font-bold',
+              'w-full h-full flex items-center justify-center text-base font-bold',
               person.is_royal
                 ? 'bg-royal-gold-light text-royal-gold-dark'
                 : person.gender === 'homme'
@@ -86,25 +87,26 @@ export default function PersonNode({
           )}
         </div>
 
-        <div className="flex-1 min-w-0 w-full text-center mt-0.5 flex flex-col items-center gap-0.5">
-          {/* Bulle du titre royal — au-dessus du prénom pour bien le distinguer */}
+        {/* Bloc texte à droite, aligné à gauche */}
+        <div className="flex-1 min-w-0 text-left flex flex-col items-start gap-0.5">
+          {/* Bulle du titre royal — au-dessus du prénom */}
           {person.is_royal && person.royal_title && (
             <span
-              className="inline-block max-w-full px-1.5 py-0.5 rounded-full bg-royal-gold-light text-royal-gold-dark text-[9px] font-bold uppercase tracking-wide leading-tight border border-royal-gold/40 truncate"
+              className="inline-block max-w-full px-1.5 py-0.5 rounded-full bg-royal-gold-light text-royal-gold-dark text-[9px] font-bold uppercase tracking-tight leading-tight border border-royal-gold/40 truncate"
               title={person.royal_title}
             >
               {person.royal_title}
             </span>
           )}
-          {/* Prénom complet, retour à la ligne si nécessaire */}
-          <p className="text-[13px] font-bold text-heritage-ink leading-[1.15] px-1 break-words hyphens-auto w-full">
+          {/* Prénom — gros, peut wrapper sur 2 lignes pour les noms longs */}
+          <p className="text-[13px] font-bold text-heritage-ink leading-[1.15] break-words hyphens-auto w-full">
             {person.first_name}
           </p>
-          <p className="text-[11px] font-semibold text-heritage-brown leading-tight truncate px-1 w-full">
+          <p className="text-[11px] font-semibold text-heritage-brown leading-tight truncate w-full">
             {person.last_name}
           </p>
           {birthText && (
-            <p className="text-[10px] font-medium text-parchment-500 leading-tight truncate px-1 w-full">
+            <p className="text-[10px] font-medium text-parchment-500 leading-tight truncate w-full">
               {birthText}
             </p>
           )}

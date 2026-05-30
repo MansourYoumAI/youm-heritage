@@ -1,39 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Fond circulaire parchment -->
-  <circle cx="32" cy="32" r="32" fill="#F9F6EF"/>
-
-  <!-- Sol -->
-  <ellipse cx="32" cy="56" rx="22" ry="2.5" fill="#705840" opacity="0.4"/>
-
-  <!-- Tronc bulbeux du baobab -->
-  <path d="M 32,56
-           C 18,56 16,44 19,36
-           C 21,30 19,26 25,23
-           C 27,22 37,22 39,23
-           C 45,26 43,30 45,36
-           C 48,44 46,56 32,56 Z"
-        fill="#8B6214"/>
-
-  <!-- Ombrage du tronc (effet volume) -->
-  <path d="M 32,56
-           C 24,56 22,46 24,38
-           C 26,32 25,28 28,25
-           Q 32,23 32,23 L 32,56 Z"
-        fill="#5C3A24" opacity="0.35"/>
-
-  <!-- Branches du baobab (rayonnent vers le haut) -->
-  <g stroke="#5C3A24" stroke-width="2.4" stroke-linecap="round" fill="none">
-    <path d="M 27,24 Q 22,16 16,10"/>
-    <path d="M 29,23 Q 26,12 24,4"/>
-    <path d="M 32,22 L 32,4"/>
-    <path d="M 35,23 Q 38,12 40,4"/>
-    <path d="M 37,24 Q 42,16 48,10"/>
-  </g>
-
-  <!-- Petits bouquets de feuilles dorées au bout des branches -->
-  <circle cx="16" cy="10" r="3.2" fill="#C4922A"/>
-  <circle cx="24" cy="4" r="3.2" fill="#C4922A"/>
-  <circle cx="32" cy="4" r="3.2" fill="#C4922A"/>
-  <circle cx="40" cy="4" r="3.2" fill="#C4922A"/>
-  <circle cx="48" cy="10" r="3.2" fill="#C4922A"/>
+  <defs>
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C4922A"/>
+      <stop offset="100%" stop-color="#8B6214"/>
+    </linearGradient>
+  </defs>
+  <!-- Disque doré dégradé (même style que le logo du Header) -->
+  <circle cx="32" cy="32" r="32" fill="url(#goldGradient)"/>
+  <!-- Y blanc serif, centré -->
+  <text
+    x="32"
+    y="33"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-weight="bold"
+    font-size="42"
+    fill="white">Y</text>
 </svg>
