@@ -9,7 +9,7 @@ import PersonPreviewPanel from '@/components/PersonPreviewPanel'
 import BulkDeleteModal from '@/components/BulkDeleteModal'
 import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { createClient } from '@/lib/supabase'
-import { findFamilyFocal } from '@/lib/utils'
+import { findFamilyFocal, cn } from '@/lib/utils'
 
 export default function HomePage() {
   const [persons, setPersons] = useState<Person[]>([])
