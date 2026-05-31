@@ -86,24 +86,29 @@ export default function SouvenirsPage() {
       <Header />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
-        <section className="rounded-3xl border-2 border-terracotta-200 px-6 sm:px-10 py-7 sm:py-9 bg-gradient-to-br from-terracotta-50 to-parchment-100 shadow-warm-md">
-          <div className="flex items-start gap-4">
-            <div className="text-5xl flex-shrink-0 leading-none" aria-hidden>
-              ✨
-            </div>
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/70 text-[10px] font-bold uppercase tracking-wide text-heritage-brown mb-2">
-                <Crown className="w-3 h-3" />
-                Mémoire dynastique
-              </div>
-              <h1 className="font-display font-bold text-3xl sm:text-4xl text-heritage-ink leading-tight">
-                Récits familiaux royaux
-              </h1>
-              <p className="text-sm font-medium text-heritage-brown mt-2 max-w-xl">
-                L&apos;ensemble des récits et anecdotes liés aux membres de la famille
-                ayant porté un titre royal.
-              </p>
-            </div>
+        <section className="rounded-3xl border-2 border-royal-gold/30 px-6 sm:px-10 py-7 sm:py-9 bg-gradient-to-br from-royal-gold-light to-parchment-100 shadow-warm-md">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/70 text-[10px] font-bold uppercase tracking-wide text-heritage-brown mb-2">
+            <Crown className="w-3 h-3" />
+            Mémoire dynastique
+          </div>
+          <h1 className="font-display font-bold text-3xl sm:text-4xl text-heritage-ink leading-tight">
+            Récits familiaux royaux
+          </h1>
+          <div className="mt-3 max-w-2xl space-y-2 text-sm font-medium text-heritage-brown leading-relaxed">
+            <p>
+              L&apos;ensemble des récits et anecdotes liés aux ascendants de la famille
+              Youm ayant porté un titre royal.
+            </p>
+            <p>
+              De nombreuses lignées de la famille ont régné dans les royaumes
+              pré-coloniaux du <strong className="text-heritage-ink">Cayor</strong> (1549-1886),
+              du <strong className="text-heritage-ink">Baol</strong> (XIVᵉ siècle-1895)
+              et du <strong className="text-heritage-ink">Fouta-Toro</strong> (1776-1881).
+            </p>
+            <p>
+              Ils ont porté les titres de Roi <em className="text-heritage-ink">(Damel, Teigne, Almamy)</em> et
+              de Reine/Princesse <em className="text-heritage-ink">(Linguère)</em>.
+            </p>
           </div>
         </section>
 
