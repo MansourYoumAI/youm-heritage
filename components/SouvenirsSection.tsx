@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Plus, X, Camera, Mic, Loader2, Trash2, Sparkles } from 'lucide-react'
+import { Plus, X, Camera, Mic, Loader2, Trash2, Sparkles, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useAudioRecorder, MAX_RECORDING_SECONDS } from '@/hooks/useAudioRecorder'
 import type { Souvenir } from '@/lib/types'
@@ -32,6 +32,7 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
   const [souvenirs, setSouvenirs] = useState<Souvenir[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState<Souvenir | null>(null)
 
   useEffect(() => {
     loadSouvenirs()
@@ -60,6 +61,14 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
     setSouvenirs(prev => prev.filter(s => s.id !== id))
   }
 
+  const isFormOpen = showForm || editing !== null
+  const isEditMode = editing !== null
+
+  function closeForm() {
+    setShowForm(false)
+    setEditing(null)
+  }
+
   return (
     <div className="card p-6">
       <div className="flex items-center justify-between mb-5">
@@ -70,26 +79,29 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
           </h2>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
-          className={showForm ? 'btn-secondary text-sm py-2 px-3' : 'btn-primary text-sm py-2 px-3'}
+          onClick={() => (isFormOpen ? closeForm() : setShowForm(true))}
+          className={isFormOpen ? 'btn-secondary text-sm py-2 px-3' : 'btn-primary text-sm py-2 px-3'}
         >
-          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? 'Annuler' : 'Ajouter un souvenir'}
+          {isFormOpen ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {isFormOpen
+            ? 'Annuler'
+            : 'Ajouter un souvenir'}
         </button>
       </div>
 
-      {showForm && (
+      {isFormOpen && (
         <SouvenirForm
           personId={personId}
           kingdomSlug={kingdomSlug}
+          existing={editing}
           onSaved={() => {
-            setShowForm(false)
+            closeForm()
             loadSouvenirs()
           }}
         />
       )}
 
-      {!showForm && (
+      {!isFormOpen && (
         <>
           {loading ? (
             <div className="space-y-3">
@@ -101,7 +113,11 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
               <p className="text-sm mt-1">Ajoutez-en un pour enrichir cette mémoire.</p>
             </div>
           ) : (
-            <Timeline souvenirs={souvenirs} onDelete={deleteSouvenir} />
+            <Timeline
+              souvenirs={souvenirs}
+              onDelete={deleteSouvenir}
+              onEdit={setEditing}
+            />
           )}
         </>
       )}
@@ -109,12 +125,22 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
   )
 }
 
-function Timeline({ souvenirs, onDelete }: { souvenirs: Souvenir[]; onDelete: (id: string) => void }) {
+function Timeline({
+  souvenirs, onDelete, onEdit,
+}: {
+  souvenirs: Souvenir[]
+  onDelete: (id: string) => void
+  onEdit: (s: Souvenir) => void
+}) {
   return (
     <div>
       {souvenirs.map((s, i) => (
         <div key={s.id}>
-          <TimelineItem souvenir={s} onDelete={() => onDelete(s.id)} />
+          <TimelineItem
+            souvenir={s}
+            onDelete={() => onDelete(s.id)}
+            onEdit={() => onEdit(s)}
+          />
           {i < souvenirs.length - 1 && <DashedConnector />}
         </div>
       ))}
@@ -138,7 +164,13 @@ function DashedConnector() {
   )
 }
 
-function TimelineItem({ souvenir, onDelete }: { souvenir: Souvenir; onDelete: () => void }) {
+function TimelineItem({
+  souvenir, onDelete, onEdit,
+}: {
+  souvenir: Souvenir
+  onDelete: () => void
+  onEdit: () => void
+}) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const dateLabel = souvenir.souvenir_date || 'Sans date'
 
@@ -155,10 +187,16 @@ function TimelineItem({ souvenir, onDelete }: { souvenir: Souvenir; onDelete: ()
 
       <div className="flex items-start justify-between gap-2 mb-2">
         <h3 className="font-display font-bold text-heritage-ink text-base">{souvenir.title}</h3>
-        <button onClick={onDelete}
-          className="p-1.5 rounded text-parchment-500 hover:text-terracotta-500 hover:bg-terracotta-50 flex-shrink-0">
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button onClick={onEdit} title="Modifier"
+            className="p-1.5 rounded text-parchment-500 hover:text-heritage-green hover:bg-heritage-green/10">
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button onClick={onDelete} title="Supprimer"
+            className="p-1.5 rounded text-parchment-500 hover:text-terracotta-500 hover:bg-terracotta-50">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {souvenir.detail && (
@@ -186,6 +224,12 @@ function TimelineItem({ souvenir, onDelete }: { souvenir: Souvenir; onDelete: ()
         <audio src={souvenir.audio_url} controls className="w-full mt-2" />
       )}
 
+      {souvenir.source && (
+        <p className="mt-3 pt-2 border-t border-parchment-200 text-[11px] italic text-heritage-brown opacity-70">
+          Source : {souvenir.source}
+        </p>
+      )}
+
       {lightboxOpen && souvenir.image_url && (
         <Lightbox
           src={souvenir.image_url}
@@ -200,19 +244,26 @@ function TimelineItem({ souvenir, onDelete }: { souvenir: Souvenir; onDelete: ()
 interface SouvenirFormProps {
   personId?: string
   kingdomSlug?: string
+  /** Si fourni, le formulaire passe en mode édition (UPDATE) */
+  existing?: Souvenir | null
   onSaved: () => void
 }
 
-function SouvenirForm({ personId, kingdomSlug, onSaved }: SouvenirFormProps) {
+function SouvenirForm({ personId, kingdomSlug, existing, onSaved }: SouvenirFormProps) {
   const supabase = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const isEdit = !!existing
 
-  const [title, setTitle] = useState('')
-  const [souvenirDate, setSouvenirDate] = useState('')
-  const [detail, setDetail] = useState('')
+  const [title, setTitle] = useState(existing?.title || '')
+  const [souvenirDate, setSouvenirDate] = useState(existing?.souvenir_date || '')
+  const [detail, setDetail] = useState(existing?.detail || '')
+  const [source, setSource] = useState(existing?.source || '')
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(existing?.image_url || null)
+  // Tracking de la photo existante (pour savoir si on doit la retirer en DB)
+  const [keepExistingImage, setKeepExistingImage] = useState(!!existing?.image_url)
   const [showRecorder, setShowRecorder] = useState(false)
+  const [keepExistingAudio, setKeepExistingAudio] = useState(!!existing?.audio_url)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -220,6 +271,7 @@ function SouvenirForm({ personId, kingdomSlug, onSaved }: SouvenirFormProps) {
 
   function handleImageSelect(file: File) {
     setImageFile(file)
+    setKeepExistingImage(false)
     const reader = new FileReader()
     reader.onload = e => setImagePreview(e.target?.result as string)
     reader.readAsDataURL(file)
@@ -228,12 +280,14 @@ function SouvenirForm({ personId, kingdomSlug, onSaved }: SouvenirFormProps) {
   function removeImage() {
     setImageFile(null)
     setImagePreview(null)
+    setKeepExistingImage(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   function removeAudio() {
     recorder.resetRecording()
     setShowRecorder(false)
+    setKeepExistingAudio(false)
   }
 
   async function uploadFile(bucket: string, file: Blob, ext: string): Promise<{ url: string; path: string } | null> {
@@ -254,10 +308,13 @@ function SouvenirForm({ personId, kingdomSlug, onSaved }: SouvenirFormProps) {
     if (!title.trim()) { setError('Le titre est obligatoire.'); return }
     setSaving(true)
 
-    let imageUrl: string | null = null
-    let imagePath: string | null = null
+    // ── PHOTO : 3 cas
+    // 1) nouveau fichier sélectionné → upload, remplace
+    // 2) photo existante conservée (édition sans toucher à l'image) → on garde l'URL existante
+    // 3) ni nouveau fichier ni conservée → champ NULL
+    let imageUrl: string | null = isEdit && keepExistingImage ? (existing?.image_url ?? null) : null
+    let imagePath: string | null = isEdit && keepExistingImage ? (existing?.image_storage_path ?? null) : null
     if (imageFile) {
-      // Redimensionne + ré-encode pour alléger
       let upload: File
       try {
         upload = await resizeImage(imageFile, {
@@ -276,9 +333,10 @@ function SouvenirForm({ personId, kingdomSlug, onSaved }: SouvenirFormProps) {
       imagePath = result.path
     }
 
-    let audioUrl: string | null = null
-    let audioPath: string | null = null
-    let audioDuration: number | null = null
+    // ── AUDIO : même logique
+    let audioUrl: string | null = isEdit && keepExistingAudio ? (existing?.audio_url ?? null) : null
+    let audioPath: string | null = isEdit && keepExistingAudio ? (existing?.audio_storage_path ?? null) : null
+    let audioDuration: number | null = isEdit && keepExistingAudio ? (existing?.audio_duration_seconds ?? null) : null
     if (recorder.audioBlob) {
       const result = await uploadFile('souvenirs', recorder.audioBlob, 'webm')
       if (!result) { setSaving(false); return }
@@ -287,20 +345,35 @@ function SouvenirForm({ personId, kingdomSlug, onSaved }: SouvenirFormProps) {
       audioDuration = recorder.duration
     }
 
-    const { error: insertErr } = await supabase.from('souvenirs').insert({
-      person_id: personId ?? null,
-      kingdom_slug: kingdomSlug ?? null,
+    const payload = {
       title: title.trim(),
       souvenir_date: souvenirDate.trim() || null,
       detail: detail.trim() || null,
+      source: source.trim() || null,
       image_url: imageUrl,
       image_storage_path: imagePath,
       audio_url: audioUrl,
       audio_storage_path: audioPath,
       audio_duration_seconds: audioDuration,
-    })
+    }
 
-    if (insertErr) { setError(insertErr.message); setSaving(false); return }
+    let dbError: { message: string } | null = null
+    if (isEdit && existing) {
+      const { error: updateErr } = await supabase
+        .from('souvenirs')
+        .update(payload)
+        .eq('id', existing.id)
+      dbError = updateErr
+    } else {
+      const { error: insertErr } = await supabase.from('souvenirs').insert({
+        ...payload,
+        person_id: personId ?? null,
+        kingdom_slug: kingdomSlug ?? null,
+      })
+      dbError = insertErr
+    }
+
+    if (dbError) { setError(dbError.message); setSaving(false); return }
     recorder.resetRecording()
     onSaved()
   }
@@ -352,7 +425,23 @@ function SouvenirForm({ personId, kingdomSlug, onSaved }: SouvenirFormProps) {
 
       {/* Audio */}
       <div>
-        {!showRecorder && !recorder.audioUrl && (
+        {/* En mode édition : afficher l'audio existant si conservé et qu'on n'enregistre pas un nouveau */}
+        {isEdit && keepExistingAudio && existing?.audio_url && !recorder.audioUrl && !showRecorder && (
+          <div className="space-y-2">
+            <audio src={existing.audio_url} controls className="w-full" />
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowRecorder(true)}
+                className="text-sm font-semibold text-heritage-green hover:underline">
+                Remplacer par un nouveau vocal
+              </button>
+              <button type="button" onClick={removeAudio}
+                className="text-sm font-semibold text-terracotta-600 hover:underline">
+                Retirer le vocal
+              </button>
+            </div>
+          </div>
+        )}
+        {!showRecorder && !recorder.audioUrl && !(isEdit && keepExistingAudio && existing?.audio_url) && (
           <div className="space-y-1">
             <button type="button" onClick={() => setShowRecorder(true)}
               className="btn-secondary text-sm py-2 px-4">
@@ -410,14 +499,31 @@ function SouvenirForm({ personId, kingdomSlug, onSaved }: SouvenirFormProps) {
         )}
       </div>
 
+      {/* Source — discret, en bas du formulaire */}
+      <div className="pt-2 border-t border-parchment-300">
+        <label className="text-[11px] font-semibold text-heritage-brown uppercase tracking-wider opacity-70">
+          Source (optionnel)
+        </label>
+        <input
+          type="text"
+          value={source}
+          onChange={e => setSource(e.target.value)}
+          placeholder="Témoin, livre, archive, tradition orale..."
+          className="mt-1 w-full px-3 py-1.5 text-sm rounded-lg border border-parchment-400 bg-white/60 text-heritage-ink placeholder:text-heritage-brown placeholder:opacity-50 focus:bg-white focus:border-heritage-green focus:outline-none"
+        />
+      </div>
+
       {error && (
         <p className="text-sm font-medium text-terracotta-700 bg-terracotta-50 p-3 rounded-lg">{error}</p>
       )}
 
       <div className="flex gap-2 pt-2">
         <button type="button" onClick={handleSave}
-          className="btn-primary flex-1" disabled={saving || !title.trim()}>
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enregistrer le souvenir'}
+          className="btn-primary flex-1" disabled={saving || !title.trim()}
+          title={isEdit ? 'Enregistrer les modifications' : 'Enregistrer le souvenir'}>
+          {saving
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : isEdit ? 'Enregistrer les modifications' : 'Enregistrer le souvenir'}
         </button>
       </div>
     </div>

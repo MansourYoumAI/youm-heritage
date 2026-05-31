@@ -125,6 +125,7 @@ export interface Souvenir {
   id: string
   person_id: string | null
   kingdom_slug: string | null
+  source: string | null
   title: string
   detail: string | null
   souvenir_date: string | null

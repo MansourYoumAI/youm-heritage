@@ -290,6 +290,12 @@ function SouvenirCard({
             <audio src={souvenir.audio_url} controls className="w-full" />
           </div>
         )}
+
+        {souvenir.source && (
+          <p className="mt-3 pt-2 border-t border-parchment-200 text-[11px] italic text-heritage-brown opacity-70">
+            Source : {souvenir.source}
+          </p>
+        )}
       </div>
     </li>
   )
