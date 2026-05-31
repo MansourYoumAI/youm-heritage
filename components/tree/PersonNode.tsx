@@ -2,9 +2,10 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Crown, Plus, Pencil, Sparkles } from 'lucide-react'
+import { Plus, Pencil, Sparkles } from 'lucide-react'
 import type { Person, Souvenir } from '@/lib/types'
 import { getInitials, cn, formatDateFR } from '@/lib/utils'
+import RoyalCrown from '@/components/icons/RoyalCrown'
 
 interface PersonNodeProps {
   person: Person
@@ -113,10 +114,16 @@ export default function PersonNode({
         </div>
       </button>
 
-      {/* Couronne (lignée royale) — plus visible : décollée + plus grosse */}
+      {/* Couronne (lignée royale) — vraie illustration plate dorée sur fond jaune vif */}
       {person.is_royal && (
-        <div className="absolute -top-2.5 -right-2.5 w-7 h-7 rounded-full bg-royal-gold flex items-center justify-center shadow-warm-md z-10 pointer-events-none border-2 border-white">
-          <Crown className="w-4 h-4 text-heritage-ink" strokeWidth={2.4} fill="currentColor" fillOpacity={0.2} />
+        <div
+          className="absolute -top-2.5 -right-2.5 w-8 h-8 rounded-full flex items-center justify-center z-10 pointer-events-none border-2 border-white"
+          style={{
+            backgroundColor: '#FFD43B',
+            boxShadow: '0 2px 8px rgba(196, 146, 42, 0.5), 0 0 0 1px rgba(139, 98, 20, 0.3)',
+          }}
+        >
+          <RoyalCrown className="w-5 h-5" />
         </div>
       )}
 
