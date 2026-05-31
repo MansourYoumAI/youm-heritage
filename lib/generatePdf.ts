@@ -90,12 +90,73 @@ function drawDecorativeBorder(doc: jsPDF) {
   doc.rect(m + 4, m + 4, PAGE_W - 2 * m - 8, PAGE_H - 2 * m - 8)
 }
 
-function drawCrown(doc: jsPDF, cx: number, cy: number, size: number) {
-  // Petit cercle doré avec un point central
-  setFill(doc, C_GOLD)
-  doc.circle(cx, cy, size, 'F')
-  setFill(doc, C_INK)
-  doc.circle(cx, cy, size * 0.35, 'F')
+/**
+ * Badge couronne royale : disque jaune vif avec bordure blanche et un mini
+ * dessin de couronne dorée à 5 pointes + joyau rouge au centre.
+ * Identique visuellement au badge utilisé dans la vue arbre du site.
+ */
+function drawRoyalCrownBadge(doc: jsPDF, cx: number, cy: number, r: number) {
+  // 1) Fond jaune vif
+  doc.setFillColor(255, 212, 59)
+  doc.circle(cx, cy, r, 'F')
+  // 2) Anneau blanc épais
+  doc.setDrawColor(255, 255, 255)
+  doc.setLineWidth(r * 0.18)
+  doc.circle(cx, cy, r, 'S')
+  // 3) Liseré brun fin pour le contraste
+  doc.setDrawColor(139, 98, 20)
+  doc.setLineWidth(r * 0.05)
+  doc.circle(cx, cy, r, 'S')
+
+  // 4) Couronne dorée stylisée (polygone 5 pointes)
+  const cw = r * 1.25
+  const ch = r * 0.95
+  const left = cx - cw / 2
+  const right = cx + cw / 2
+  const top = cy - ch * 0.55
+  const bandTop = cy + ch * 0.15
+  const bandBottom = cy + ch * 0.45
+  const valleyY = cy - ch * 0.15
+
+  const pts: Array<[number, number]> = [
+    [left, bandTop],
+    [left + cw * 0.10, top + ch * 0.10],   // pointe 1
+    [left + cw * 0.22, valleyY],            // vallée 1
+    [left + cw * 0.33, top + ch * 0.04],    // pointe 2
+    [left + cw * 0.43, valleyY + ch * 0.03], // vallée 2
+    [left + cw * 0.50, top - ch * 0.04],    // pointe centrale (la + haute)
+    [left + cw * 0.57, valleyY + ch * 0.03], // vallée 3
+    [left + cw * 0.67, top + ch * 0.04],    // pointe 4
+    [left + cw * 0.78, valleyY],            // vallée 4
+    [left + cw * 0.90, top + ch * 0.10],    // pointe 5
+    [right, bandTop],                       // bas-droite
+  ]
+  const rel: Array<[number, number]> = []
+  for (let i = 1; i < pts.length; i++) {
+    rel.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]])
+  }
+  doc.setFillColor(255, 201, 60)
+  doc.setDrawColor(139, 98, 20)
+  doc.setLineWidth(r * 0.06)
+  doc.lines(rel, pts[0][0], pts[0][1], [1, 1], 'FD', true)
+
+  // 5) Bandeau inférieur
+  doc.setFillColor(232, 170, 28)
+  doc.setDrawColor(139, 98, 20)
+  doc.setLineWidth(r * 0.05)
+  doc.rect(left, bandTop, cw, bandBottom - bandTop, 'FD')
+
+  // 6) Joyau central rouge (petit losange)
+  const rubyW = r * 0.18
+  const rubyH = r * 0.22
+  doc.setFillColor(214, 47, 78)
+  const rubyTop: [number, number] = [cx, cy - ch * 0.08 - rubyH / 2]
+  const rubyRel: Array<[number, number]> = [
+    [rubyW / 2, rubyH / 2],
+    [-rubyW / 2, rubyH / 2],
+    [-rubyW / 2, -rubyH / 2],
+  ]
+  doc.lines(rubyRel, rubyTop[0], rubyTop[1], [1, 1], 'F', true)
 }
 
 export async function downloadFamilyTreePdf(
@@ -200,7 +261,8 @@ export async function downloadFamilyTreePdf(
   }
   doc.setLineDashPattern([], 0)
 
-  // ─── Nœuds
+  // ─── Nœuds : layout horizontal (avatar à gauche, texte à droite),
+  //    identique à la vue arbre du site.
   for (const person of persons) {
     const pos = layout.positions.get(person.id)
     if (!pos) continue
@@ -210,7 +272,7 @@ export async function downloadFamilyTreePdf(
     const nw = NODE_W * scale
     const nh = NODE_H * scale
 
-    // Fond blanc + bordure
+    // ─ Carte : fond blanc + bordure
     doc.setFillColor(255, 255, 255)
     if (person.is_royal) {
       setDraw(doc, C_GOLD)
@@ -219,96 +281,89 @@ export async function downloadFamilyTreePdf(
       setDraw(doc, C_BORDER)
       doc.setLineWidth(Math.max(0.3, 0.5 * scale))
     }
-    const radius = nw * 0.06
-    doc.roundedRect(nx, ny, nw, nh, radius, radius, 'FD')
+    const cardRadius = nh * 0.12
+    doc.roundedRect(nx, ny, nw, nh, cardRadius, cardRadius, 'FD')
 
-    // Photo carrée arrondie — proportionnelle à la carte
-    const photoSize = Math.min(nw * 0.30, nh * 0.42)
-    const photoX = nx + (nw - photoSize) / 2
-    const photoY = ny + nh * 0.08
+    // ─ Mesures de mise en page horizontale
+    const cardPad = nh * 0.10
+    const avatarSize = nh - 2 * cardPad
+    const avatarX = nx + cardPad
+    const avatarY = ny + cardPad
+    const gap = nh * 0.10
+    const textX = avatarX + avatarSize + gap
+    const textRight = nx + nw - cardPad
+    const textW = textRight - textX
 
+    // ─ Avatar (photo ou initiales) — à gauche
     const photo = photoCache.get(person.id)
     if (photo) {
       const format = photo.startsWith('data:image/png') ? 'PNG' : 'JPEG'
       try {
-        doc.addImage(photo, format, photoX, photoY, photoSize, photoSize, undefined, 'FAST')
+        doc.addImage(photo, format, avatarX, avatarY, avatarSize, avatarSize, undefined, 'FAST')
       } catch {
-        drawInitialsBox(doc, person, photoX, photoY, photoSize, scale)
+        drawInitialsBox(doc, person, avatarX, avatarY, avatarSize, scale)
       }
     } else {
-      drawInitialsBox(doc, person, photoX, photoY, photoSize, scale)
+      drawInitialsBox(doc, person, avatarX, avatarY, avatarSize, scale)
     }
-
-    // Bordure photo
+    // Bordure avatar
     const borderColor = person.is_royal ? C_GOLD : C_BORDER
     doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2])
-    doc.setLineWidth(Math.max(0.2, 0.35 * scale))
-    doc.roundedRect(photoX, photoY, photoSize, photoSize, photoSize * 0.12, photoSize * 0.12, 'S')
+    doc.setLineWidth(Math.max(0.3, 0.5 * scale))
+    doc.roundedRect(avatarX, avatarY, avatarSize, avatarSize, avatarSize * 0.12, avatarSize * 0.12, 'S')
 
-    // Couronne (en haut à droite)
-    if (person.is_royal) {
-      drawCrown(doc, nx + nw - nw * 0.08, ny + nh * 0.07, Math.max(1, nw * 0.035))
-    }
+    // ─ Tailles de police (significativement plus grosses qu'avant)
+    const titleSize = Math.max(6, nh * 0.10)
+    const firstNameSize = Math.max(11, nh * 0.20)
+    const lastNameSize = Math.max(8, nh * 0.13)
+    const dateSize = Math.max(6, nh * 0.10)
 
-    // Petit séparateur doré sous la photo
-    const sepY = photoY + photoSize + nh * 0.05
-    setDraw(doc, C_GOLD)
-    doc.setLineWidth(Math.max(0.15, 0.25 * scale))
-    doc.line(nx + nw * 0.32, sepY, nx + nw * 0.68, sepY)
+    // ─ Bloc texte à droite, aligné à gauche
+    let cursorY = avatarY  // top du bloc texte
 
-    // Tailles de police proportionnelles à la hauteur de carte
-    const firstNameSize = Math.max(9, nh * 0.115)
-    const lastNameSize = Math.max(7, nh * 0.085)
-    const dateSize = Math.max(6, nh * 0.065)
-    const titleSize = Math.max(5, nh * 0.055)
-
-    // Bulle du titre royal (au-dessus du prénom, comme à l'écran)
-    let firstNameY = sepY + nh * 0.10
+    // Bulle du titre royal (pill alignée à gauche)
     if (person.is_royal && person.royal_title) {
-      const padX = nw * 0.06
-      const padY = nh * 0.02
+      const padX = titleSize * 0.45
+      const padY = titleSize * 0.18
+      const labelText = person.royal_title.toUpperCase()
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(titleSize)
-      const labelText = person.royal_title.toUpperCase()
-      const textW = Math.min(doc.getTextWidth(labelText), nw - nw * 0.16)
-      const pillW = textW + 2 * padX
-      const pillH = titleSize * 0.7 + 2 * padY
-      const pillX = nx + (nw - pillW) / 2
-      const pillY = firstNameY - pillH * 0.6
-      // fond doré clair
+      const labelW = Math.min(doc.getTextWidth(labelText), textW - 2 * padX)
+      const pillW = labelW + 2 * padX
+      const pillH = titleSize * 0.42 + 2 * padY
       setFill(doc, C_GOLD_LIGHT)
       setDraw(doc, C_GOLD)
       doc.setLineWidth(Math.max(0.15, 0.2 * scale))
       const pillR = pillH / 2
-      doc.roundedRect(pillX, pillY, pillW, pillH, pillR, pillR, 'FD')
-      // texte doré
+      doc.roundedRect(textX, cursorY, pillW, pillH, pillR, pillR, 'FD')
       setText(doc, C_GOLD_DARK)
       doc.text(
         labelText,
-        nx + nw / 2,
-        pillY + pillH / 2 + titleSize * 0.22,
-        { align: 'center', maxWidth: nw - nw * 0.16 },
+        textX + padX,
+        cursorY + pillH / 2,
+        { maxWidth: labelW, baseline: 'middle' },
       )
-      // décale le prénom sous la bulle
-      firstNameY = pillY + pillH + nh * 0.08
+      cursorY += pillH + nh * 0.04
     }
 
-    // Prénom
+    // Prénom — gros et gras serif, peut wrapper sur 2 lignes
     doc.setFont('times', 'bold')
     doc.setFontSize(firstNameSize)
     setText(doc, C_INK)
-    doc.text(person.first_name, nx + nw / 2, firstNameY, {
-      align: 'center', maxWidth: nw - nw * 0.10,
-    })
+    const fnLines = (doc.splitTextToSize(person.first_name, textW) as string[]).slice(0, 2)
+    const fnLineH = firstNameSize * 0.42
+    for (const line of fnLines) {
+      doc.text(line, textX, cursorY, { baseline: 'top' })
+      cursorY += fnLineH
+    }
+    cursorY += nh * 0.02
 
-    // Nom
-    const lastNameY = firstNameY + firstNameSize * 0.4 + nh * 0.05
+    // Nom de famille
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(lastNameSize)
     setText(doc, C_BROWN)
-    doc.text(person.last_name, nx + nw / 2, lastNameY, {
-      align: 'center', maxWidth: nw - nw * 0.10,
-    })
+    doc.text(person.last_name, textX, cursorY, { baseline: 'top', maxWidth: textW })
+    cursorY += lastNameSize * 0.42 + nh * 0.02
 
     // Dates de vie
     let lifeText = ''
@@ -320,12 +375,15 @@ export async function downloadFamilyTreePdf(
       lifeText = `† ${formatDateFR(person.death_date)}`
     }
     if (lifeText) {
-      const dateY = lastNameY + lastNameSize * 0.4 + nh * 0.045
       doc.setFontSize(dateSize)
       setText(doc, C_LIGHT_BROWN)
-      doc.text(lifeText, nx + nw / 2, dateY, {
-        align: 'center', maxWidth: nw - nw * 0.10,
-      })
+      doc.text(lifeText, textX, cursorY, { baseline: 'top', maxWidth: textW })
+    }
+
+    // ─ Badge couronne (jaune vif) en haut-droite de la carte, comme à l'écran
+    if (person.is_royal) {
+      const badgeR = Math.max(2, nh * 0.17)
+      drawRoyalCrownBadge(doc, nx + nw - badgeR * 0.55, ny + badgeR * 0.55, badgeR)
     }
   }
 
