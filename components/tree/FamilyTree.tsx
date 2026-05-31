@@ -261,6 +261,34 @@ export default function FamilyTree({
                 strokeLinecap="round"
               />
             ))}
+
+            {/* Liens cousin : pointillés terracotta horizontaux */}
+            {layout.cousinEdges.map((edge, i) => (
+              <g key={`cousin-${i}`}>
+                <line
+                  x1={edge.x1} y1={edge.y1 + TOP_PADDING}
+                  x2={edge.x2} y2={edge.y2 + TOP_PADDING}
+                  stroke="#A0522D"
+                  strokeWidth={1.5}
+                  strokeDasharray="3 5"
+                  strokeLinecap="round"
+                  opacity={0.7}
+                />
+                {/* Petit label "cousin" à mi-chemin */}
+                <text
+                  x={(edge.x1 + edge.x2) / 2}
+                  y={(edge.y1 + edge.y2) / 2 + TOP_PADDING - 6}
+                  textAnchor="middle"
+                  fontFamily="Georgia, serif"
+                  fontSize="9"
+                  fontStyle="italic"
+                  fill="#A0522D"
+                  opacity={0.85}
+                >
+                  cousin·s
+                </text>
+              </g>
+            ))}
           </svg>
 
           {persons.map(person => {

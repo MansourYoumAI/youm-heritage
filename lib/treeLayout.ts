@@ -21,6 +21,8 @@ export interface Layout {
   positions: Map<string, { x: number; y: number }>
   coupleEdges: Array<{ x1: number; y1: number; x2: number; y2: number; midX: number }>
   parentEdges: Array<{ x1: number; y1: number; x2: number; y2: number }>
+  /** Traits pointillés horizontaux pour les liens de type "cousin" */
+  cousinEdges: Array<{ x1: number; y1: number; x2: number; y2: number }>
   width: number
   height: number
 }
@@ -108,7 +110,7 @@ export function computeLayout(
   const positions = new Map<string, { x: number; y: number }>()
 
   if (!focal) {
-    return { positions, coupleEdges: [], parentEdges: [], width: 800, height: 600 }
+    return { positions, coupleEdges: [], parentEdges: [], cousinEdges: [], width: 800, height: 600 }
   }
 
   // ─── Détecte un mariage consanguin (deux personnes qui partagent un parent)
@@ -153,6 +155,17 @@ export function computeLayout(
     return result
   }
 
+  // ─── Compression logarithmique : pour des sous-arbres très profonds, la
+  // largeur croît exponentiellement. On compresse au-delà d'un seuil pour
+  // garder les couples lisibles. Les débordements éventuels sont corrigés
+  // par le résolveur de chevauchements en fin de layout.
+  function compactWidth(w: number): number {
+    const baseline = NODE_W * 2 + COUPLE_GAP
+    if (w <= baseline) return w
+    return baseline + Math.log2(w / baseline) * NODE_W
+  }
+
+
   // ─── Garde globale : empêche une personne d'être placée deux fois
   // (cas typique : ancêtres partagés via plusieurs chemins, mariage consanguin).
   const placedGlobal = new Set<string>()
@@ -196,13 +209,15 @@ export function computeLayout(
           placePedigree(sharedGP.mother, x, grandY, newPath)
         }
       } else {
-        // Placement asymétrique : chaque côté absorbe sa propre largeur
-        // d'ascendance. Le couple est donc plus serré quand un seul côté
-        // est profond. Le rendu T-bar des lignes de filiation gère l'asymétrie
-        // proprement (vertical + horizontal + vertical).
+        // Placement asymétrique avec compression LOG des largeurs : ainsi un
+        // arbre de 10 générations ne consomme pas 2^10 × NODE_W de large.
+        // Les sous-arbres au-dessus débordent parfois de leur zone réservée ;
+        // le résolveur de chevauchements en fin de layout corrige ça.
         const isFocalLevel = recursionPath.size === 0
-        const lw = isFocalLevel ? NODE_W : pedigreeWidth(father, new Set())
-        const rw = isFocalLevel ? NODE_W : pedigreeWidth(mother, new Set())
+        const lwRaw = isFocalLevel ? NODE_W : pedigreeWidth(father, new Set())
+        const rwRaw = isFocalLevel ? NODE_W : pedigreeWidth(mother, new Set())
+        const lw = compactWidth(lwRaw)
+        const rw = compactWidth(rwRaw)
         placePedigree(father, x - COUPLE_GAP / 2 - lw / 2, parentY, newPath)
         placePedigree(mother, x + COUPLE_GAP / 2 + rw / 2, parentY, newPath)
       }
@@ -270,7 +285,61 @@ export function computeLayout(
 
   // Les personnes non placées (= hors lignée du focal, hors conjoint·e·s
   // immédiat·e·s, hors enfants directs) ne sont pas rendues dans cette vue.
-  // On les retrouvera en switchant sur l'autre arbre (Youm ↔ Gueye).
+
+  // ─── Cousins : on place les cousins de personnes déjà positionnées,
+  // à droite ou à gauche d'elles selon l'espace, sur la même ligne Y.
+  for (const rel of validRels) {
+    if (rel.type !== 'cousin') continue
+    const placedAndUnplaced = (a: string, b: string) =>
+      positions.has(a) && !positions.has(b)
+    let placedId: string | null = null
+    let unplacedId: string | null = null
+    if (placedAndUnplaced(rel.person1_id, rel.person2_id)) {
+      placedId = rel.person1_id
+      unplacedId = rel.person2_id
+    } else if (placedAndUnplaced(rel.person2_id, rel.person1_id)) {
+      placedId = rel.person2_id
+      unplacedId = rel.person1_id
+    }
+    if (!placedId || !unplacedId) continue
+    const refPos = positions.get(placedId)!
+    // Place le cousin à droite avec un écart suffisant (l'overlap resolver
+    // ci-dessous corrigera si conflit avec un autre noeud à la même ligne).
+    positions.set(unplacedId, {
+      x: refPos.x + NODE_W + Math.max(80, COUPLE_GAP * 1.5),
+      y: refPos.y,
+    })
+  }
+
+  // ─── Résolveur de chevauchements : à chaque ligne Y, on s'assure qu'aucun
+  // noeud ne chevauche le suivant (cas qui arrive quand des branches
+  // indépendantes sont placées par recursions séparées et finissent au
+  // même endroit). On pousse vers la droite en cascade.
+  const yLevels = new Set<number>()
+  for (const pos of positions.values()) yLevels.add(pos.y)
+  const MIN_GAP_BETWEEN_NODES = H_GAP
+  for (const yLevel of yLevels) {
+    const atY: Array<{ id: string; pos: { x: number; y: number } }> = []
+    for (const [id, pos] of positions) {
+      if (pos.y === yLevel) atY.push({ id, pos })
+    }
+    atY.sort((a, b) => a.pos.x - b.pos.x)
+    for (let i = 1; i < atY.length; i++) {
+      const prev = atY[i - 1]
+      const curr = atY[i]
+      const minLeft = prev.pos.x + NODE_W + MIN_GAP_BETWEEN_NODES
+      if (curr.pos.x < minLeft) {
+        const shift = minLeft - curr.pos.x
+        // Décale curr et tous les noeuds plus à droite à la même ligne Y
+        for (let j = i; j < atY.length; j++) {
+          const n = atY[j]
+          const newPos = { x: n.pos.x + shift, y: n.pos.y }
+          positions.set(n.id, newPos)
+          n.pos = newPos
+        }
+      }
+    }
+  }
 
   // ─── Normalisation : décaler pour que minX/minY soient à 0 (+ padding)
   const PADDING = 40
@@ -438,5 +507,27 @@ export function computeLayout(
   const width = (finalXs.length ? Math.max(...finalXs) : 0) + NODE_W + PADDING
   const height = (finalYs.length ? Math.max(...finalYs) : 0) + NODE_H + PADDING
 
-  return { positions, coupleEdges, parentEdges, width, height }
+  // ─── Arêtes cousin : ligne pointillée horizontale entre les 2 cousins
+  // (passe au-dessus du milieu vertical de leurs cartes).
+  const cousinEdges: Layout['cousinEdges'] = []
+  const drawnCousins = new Set<string>()
+  for (const rel of validRels) {
+    if (rel.type !== 'cousin') continue
+    const key = [rel.person1_id, rel.person2_id].sort().join('::')
+    if (drawnCousins.has(key)) continue
+    drawnCousins.add(key)
+    const p1 = positions.get(rel.person1_id)
+    const p2 = positions.get(rel.person2_id)
+    if (!p1 || !p2) continue
+    const left = p1.x < p2.x ? p1 : p2
+    const right = p1.x < p2.x ? p2 : p1
+    cousinEdges.push({
+      x1: left.x + NODE_W,
+      y1: left.y + NODE_H / 2,
+      x2: right.x,
+      y2: right.y + NODE_H / 2,
+    })
+  }
+
+  return { positions, coupleEdges, parentEdges, cousinEdges, width, height }
 }

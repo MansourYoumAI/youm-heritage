@@ -8,7 +8,11 @@ import Header from '@/components/layout/Header'
 import Lightbox from '@/components/Lightbox'
 import { createClient } from '@/lib/supabase'
 import type { Person, Souvenir } from '@/lib/types'
-import { parseYearFromDate, getInitials, cn } from '@/lib/utils'
+import {
+  parseYearFromDate, getInitials, cn,
+  getKingdomFromTitle, KINGDOM_LABELS, KINGDOM_EMBLEMS,
+  type KingdomSlugLite,
+} from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,10 +20,13 @@ interface RoyalSouvenir extends Souvenir {
   person: Person
 }
 
+type Filter = 'all' | KingdomSlugLite
+
 export default function SouvenirsPage() {
   const [items, setItems] = useState<RoyalSouvenir[]>([])
   const [loading, setLoading] = useState(true)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+  const [filter, setFilter] = useState<Filter>('all')
 
   useEffect(() => {
     load()
@@ -58,6 +65,22 @@ export default function SouvenirsPage() {
     })
   }, [items])
 
+  // Comptes par royaume (pour les puces de filtre)
+  const counts = useMemo(() => {
+    const c: Record<Filter, number> = { all: sorted.length, cayor: 0, baol: 0, 'fouta-toro': 0 }
+    for (const s of sorted) {
+      const k = getKingdomFromTitle(s.person.royal_title)
+      if (k) c[k] += 1
+    }
+    return c
+  }, [sorted])
+
+  // Liste filtrée par royaume
+  const filtered = useMemo(() => {
+    if (filter === 'all') return sorted
+    return sorted.filter(s => getKingdomFromTitle(s.person.royal_title) === filter)
+  }, [sorted, filter])
+
   return (
     <div className="min-h-screen bg-parchment-100 bg-grain">
       <Header />
@@ -77,8 +100,8 @@ export default function SouvenirsPage() {
                 Souvenirs des souverains
               </h1>
               <p className="text-sm font-medium text-heritage-brown mt-2 max-w-xl">
-                L&apos;ensemble des récits, anecdotes et vocaux liés aux membres de la
-                famille ayant porté un titre royal.
+                L&apos;ensemble des récits et anecdotes liés aux membres de la famille
+                ayant porté un titre royal.
               </p>
             </div>
           </div>
@@ -89,21 +112,43 @@ export default function SouvenirsPage() {
             Récits
           </h2>
           <span className="text-xs font-semibold text-heritage-brown">
-            {loading ? '…' : `${sorted.length} souvenir${sorted.length > 1 ? 's' : ''}`}
+            {loading ? '…' : `${filtered.length} souvenir${filtered.length > 1 ? 's' : ''}`}
           </span>
+        </div>
+
+        {/* Filtres par royaume */}
+        <div className="flex flex-wrap gap-2">
+          <FilterChip
+            active={filter === 'all'}
+            label="Tous"
+            count={counts.all}
+            onClick={() => setFilter('all')}
+          />
+          {(['cayor', 'baol', 'fouta-toro'] as const).map(k => (
+            <FilterChip
+              key={k}
+              active={filter === k}
+              label={KINGDOM_LABELS[k]}
+              emblem={KINGDOM_EMBLEMS[k]}
+              count={counts[k]}
+              onClick={() => setFilter(k)}
+            />
+          ))}
         </div>
 
         {loading ? (
           <div className="card p-10 flex items-center justify-center">
             <div className="w-10 h-10 rounded-full border-4 border-parchment-400 border-t-terracotta-500 animate-spin" />
           </div>
-        ) : sorted.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="card p-10 text-center text-heritage-brown font-medium">
-            Aucun souvenir n&apos;est encore rattaché à un membre royal de la famille.
+            {filter === 'all'
+              ? "Aucun souvenir n'est encore rattaché à un membre royal de la famille."
+              : `Aucun souvenir pour le royaume du ${KINGDOM_LABELS[filter]}.`}
           </div>
         ) : (
           <ol className="space-y-4">
-            {sorted.map(s => (
+            {filtered.map(s => (
               <SouvenirCard
                 key={s.id}
                 souvenir={s}
@@ -122,6 +167,40 @@ export default function SouvenirsPage() {
         />
       )}
     </div>
+  )
+}
+
+function FilterChip({
+  active, label, emblem, count, onClick,
+}: {
+  active: boolean
+  label: string
+  emblem?: string
+  count: number
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border-2 transition-all',
+        active
+          ? 'bg-royal-gold text-white border-royal-gold shadow-warm-sm'
+          : 'bg-white text-heritage-brown border-parchment-400 hover:bg-parchment-100 hover:border-parchment-500',
+      )}
+    >
+      {emblem && <span aria-hidden className="text-sm leading-none">{emblem}</span>}
+      <span>{label}</span>
+      <span
+        className={cn(
+          'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px]',
+          active ? 'bg-white/30 text-white' : 'bg-parchment-200 text-heritage-brown',
+        )}
+      >
+        {count}
+      </span>
+    </button>
   )
 }
 

@@ -1,5 +1,5 @@
 export type Gender = 'homme' | 'femme' | 'inconnu'
-export type RelationshipType = 'parent-enfant' | 'mariage' | 'union' | 'fratrie'
+export type RelationshipType = 'parent-enfant' | 'mariage' | 'union' | 'fratrie' | 'cousin'
 export type MediaType = 'photo' | 'document'
 export type SourceType = 'oral' | 'document' | 'livre' | 'archive' | 'autre'
 
