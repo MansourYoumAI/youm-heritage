@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { LogOut, Plus, Crown, Sparkles } from 'lucide-react'
+import { LogOut, Plus, Crown, ScrollText } from 'lucide-react'
 import PdfButton from '@/components/PdfButton'
 import PersonDrawer from '@/components/PersonDrawer'
 import { cn } from '@/lib/utils'
@@ -17,7 +17,7 @@ const KINGDOMS: { href: string; label: string }[] = [
   { href: '/fouta-toro', label: 'Fouta-Toro' },
 ]
 
-const SOUVENIRS_LINK = { href: '/souvenirs', label: 'Souvenirs' }
+const SOUVENIRS_LINK = { href: '/souvenirs', label: 'Récits' }
 
 export default function Header({ showAddButton = true }: HeaderProps) {
   const router = useRouter()
@@ -88,11 +88,11 @@ export default function Header({ showAddButton = true }: HeaderProps) {
               className={cn(
                 'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
                 pathname === SOUVENIRS_LINK.href
-                  ? 'bg-terracotta-100 text-terracotta-700'
+                  ? 'bg-heritage-green/10 text-heritage-green'
                   : 'text-heritage-brown hover:bg-parchment-200 hover:text-heritage-ink'
               )}
             >
-              <Sparkles className="w-3 h-3" />
+              <ScrollText className="w-3 h-3" />
               {SOUVENIRS_LINK.label}
             </Link>
           </nav>
@@ -156,11 +156,11 @@ export default function Header({ showAddButton = true }: HeaderProps) {
             className={cn(
               'inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[11px] font-semibold transition-colors flex-shrink-0',
               pathname === SOUVENIRS_LINK.href
-                ? 'bg-terracotta-100 text-terracotta-700'
+                ? 'bg-heritage-green/10 text-heritage-green'
                 : 'text-heritage-brown'
             )}
           >
-            <Sparkles className="w-3 h-3" />
+            <ScrollText className="w-3 h-3" />
             {SOUVENIRS_LINK.label}
           </Link>
         </nav>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { X, Crown, ArrowRight, Sparkles, Calendar, Mic, Pencil, ChevronDown } from 'lucide-react'
+import { X, Crown, ArrowRight, ScrollText, Calendar, Mic, Pencil, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import type { Person, Souvenir } from '@/lib/types'
 import {
@@ -131,12 +131,12 @@ export default function PersonPreviewPanel({ person, onClose, onDeleted }: Perso
               </div>
             )}
 
-            {/* Souvenirs */}
+            {/* Récits familiaux */}
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-4 h-4 text-terracotta-500" />
+                <ScrollText className="w-4 h-4 text-heritage-green" />
                 <h3 className="text-sm font-bold text-heritage-ink uppercase tracking-wider">
-                  Souvenirs
+                  Récits familiaux
                 </h3>
               </div>
 
@@ -148,7 +148,7 @@ export default function PersonPreviewPanel({ person, onClose, onDeleted }: Perso
                 </div>
               ) : souvenirs.length === 0 ? (
                 <p className="text-sm font-medium text-heritage-brown italic">
-                  Aucun souvenir pour l&apos;instant.
+                  Aucun récit familial pour l&apos;instant.
                 </p>
               ) : (
                 <>

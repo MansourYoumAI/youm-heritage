@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Plus, Pencil, Sparkles } from 'lucide-react'
+import { Plus, Pencil, ScrollText } from 'lucide-react'
 import type { Person, Souvenir } from '@/lib/types'
 import { getInitials, cn, formatDateFR } from '@/lib/utils'
 import RoyalCrown from '@/components/icons/RoyalCrown'
@@ -127,7 +127,7 @@ export default function PersonNode({
         </div>
       )}
 
-      {/* Indicateur souvenirs — terracotta pastille en bas-gauche */}
+      {/* Indicateur récits familiaux — pastille verte heritage en bas-gauche */}
       {hasSouvenirs && (
         <button
           type="button"
@@ -135,10 +135,10 @@ export default function PersonNode({
             e.stopPropagation()
             onClick()
           }}
-          title={`${souvenirs.length} souvenir${souvenirs.length > 1 ? 's' : ''} — cliquer pour voir`}
-          className="absolute -bottom-2 -left-2 w-6 h-6 rounded-full bg-terracotta-500 text-white flex items-center justify-center shadow-warm-sm z-20 border-2 border-white hover:scale-110 transition-transform"
+          title={`${souvenirs.length} récit familial${souvenirs.length > 1 ? 'aux' : ''} — cliquer pour voir`}
+          className="absolute -bottom-2 -left-2 w-6 h-6 rounded-full bg-heritage-green text-white flex items-center justify-center shadow-warm-sm z-20 border-2 border-white hover:scale-110 transition-transform"
         >
-          <Sparkles className="w-3 h-3" strokeWidth={2.5} />
+          <ScrollText className="w-3.5 h-3.5" strokeWidth={2.2} />
           {souvenirs.length > 1 && (
             <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] px-1 rounded-full bg-heritage-ink text-white text-[8px] font-bold flex items-center justify-center leading-none">
               {souvenirs.length}

@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Sparkles, Crown, Mic, ChevronRight, Calendar } from 'lucide-react'
+import { ScrollText, Crown, Mic, ChevronRight, Calendar } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Lightbox from '@/components/Lightbox'
 import { createClient } from '@/lib/supabase'
@@ -97,7 +97,7 @@ export default function SouvenirsPage() {
                 Mémoire dynastique
               </div>
               <h1 className="font-display font-bold text-3xl sm:text-4xl text-heritage-ink leading-tight">
-                Souvenirs des souverains
+                Récits familiaux royaux
               </h1>
               <p className="text-sm font-medium text-heritage-brown mt-2 max-w-xl">
                 L&apos;ensemble des récits et anecdotes liés aux membres de la famille
@@ -112,7 +112,7 @@ export default function SouvenirsPage() {
             Récits
           </h2>
           <span className="text-xs font-semibold text-heritage-brown">
-            {loading ? '…' : `${filtered.length} souvenir${filtered.length > 1 ? 's' : ''}`}
+            {loading ? '…' : `${filtered.length} récit${filtered.length > 1 ? 's' : ''}`}
           </span>
         </div>
 
@@ -143,8 +143,8 @@ export default function SouvenirsPage() {
         ) : filtered.length === 0 ? (
           <div className="card p-10 text-center text-heritage-brown font-medium">
             {filter === 'all'
-              ? "Aucun souvenir n'est encore rattaché à un membre royal de la famille."
-              : `Aucun souvenir pour le royaume du ${KINGDOM_LABELS[filter]}.`}
+              ? "Aucun récit familial n'est encore rattaché à un membre royal de la famille."
+              : `Aucun récit familial pour le royaume du ${KINGDOM_LABELS[filter]}.`}
           </div>
         ) : (
           <ol className="space-y-4">

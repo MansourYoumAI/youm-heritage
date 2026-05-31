@@ -67,7 +67,7 @@ export default function BulkDeleteModal({ ids, onClose, onDeleted }: BulkDeleteM
         </div>
 
         <p className="text-heritage-brown font-medium mb-5 leading-relaxed">
-          Vous allez supprimer <strong className="text-heritage-ink">{ids.length} personne{ids.length > 1 ? 's' : ''}</strong> de l&apos;arbre familial, ainsi que leurs souvenirs, photos et liens. Cette action est irréversible.
+          Vous allez supprimer <strong className="text-heritage-ink">{ids.length} personne{ids.length > 1 ? 's' : ''}</strong> de l&apos;arbre familial, ainsi que leurs récits familiaux, photos et liens. Cette action est irréversible.
         </p>
 
         <label className="label">Mot de passe de suppression</label>

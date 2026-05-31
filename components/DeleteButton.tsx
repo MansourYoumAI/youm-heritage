@@ -108,7 +108,7 @@ export default function DeleteButton({
 
             <p className="text-heritage-brown font-medium mb-5 leading-relaxed">
               Vous êtes sur le point de supprimer <strong className="text-heritage-ink">{personName}</strong> de l&apos;arbre familial.
-              Ses souvenirs, photos et liens familiaux seront également supprimés. Cette action est irréversible.
+              Ses récits familiaux, photos et liens seront également supprimés. Cette action est irréversible.
             </p>
 
             <label className="label">Mot de passe de suppression</label>

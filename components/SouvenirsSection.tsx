@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Plus, X, Camera, Mic, Loader2, Trash2, Sparkles, Pencil } from 'lucide-react'
+import { Plus, X, Camera, Mic, Loader2, Trash2, ScrollText, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useAudioRecorder, MAX_RECORDING_SECONDS } from '@/hooks/useAudioRecorder'
 import type { Souvenir } from '@/lib/types'
@@ -55,7 +55,7 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
   }
 
   async function deleteSouvenir(id: string) {
-    if (!confirm('Supprimer ce souvenir ?')) return
+    if (!confirm('Supprimer ce récit familial ?')) return
     const supabase = createClient()
     await supabase.from('souvenirs').delete().eq('id', id)
     setSouvenirs(prev => prev.filter(s => s.id !== id))
@@ -73,9 +73,9 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
     <div className="card p-6">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <Sparkles className="w-5 h-5 text-terracotta-500" />
+          <ScrollText className="w-5 h-5 text-heritage-green" />
           <h2 className="text-xl font-display font-bold text-heritage-ink">
-            Souvenirs ({souvenirs.length})
+            Récits familiaux ({souvenirs.length})
           </h2>
         </div>
         <button
@@ -85,7 +85,7 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
           {isFormOpen ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {isFormOpen
             ? 'Annuler'
-            : 'Ajouter un souvenir'}
+            : 'Ajouter un récit'}
         </button>
       </div>
 
@@ -109,7 +109,7 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
             </div>
           ) : souvenirs.length === 0 ? (
             <div className="text-center py-8 text-heritage-brown font-medium">
-              <p>Aucun souvenir pour l&apos;instant.</p>
+              <p>Aucun récit familial pour l&apos;instant.</p>
               <p className="text-sm mt-1">Ajoutez-en un pour enrichir cette mémoire.</p>
             </div>
           ) : (
@@ -381,13 +381,13 @@ function SouvenirForm({ personId, kingdomSlug, existing, onSaved }: SouvenirForm
   return (
     <div className="bg-parchment-100 rounded-2xl p-5 border border-parchment-400 space-y-4">
       <div>
-        <label className="label">Titre du souvenir *</label>
+        <label className="label">Titre du récit *</label>
         <input className="input" value={title} onChange={e => setTitle(e.target.value)}
           placeholder="Ex : Le mariage de Malick et Fatou Binetou" />
       </div>
 
       <div>
-        <label className="label">Date du souvenir</label>
+        <label className="label">Date du récit</label>
         <input className="input" value={souvenirDate} onChange={e => setSouvenirDate(e.target.value)}
           placeholder="1970, vers 1950, années 60..." />
         <p className="text-xs text-heritage-brown mt-1 font-medium">
@@ -399,7 +399,7 @@ function SouvenirForm({ personId, kingdomSlug, existing, onSaved }: SouvenirForm
         <label className="label">Détails</label>
         <textarea className="input min-h-28 resize-y" value={detail}
           onChange={e => setDetail(e.target.value)}
-          placeholder="Racontez ce souvenir, ce moment, cette anecdote..." />
+          placeholder="Racontez ce récit familial, ce moment, cette anecdote..." />
       </div>
 
       {/* Photo */}
@@ -520,10 +520,10 @@ function SouvenirForm({ personId, kingdomSlug, existing, onSaved }: SouvenirForm
       <div className="flex gap-2 pt-2">
         <button type="button" onClick={handleSave}
           className="btn-primary flex-1" disabled={saving || !title.trim()}
-          title={isEdit ? 'Enregistrer les modifications' : 'Enregistrer le souvenir'}>
+          title={isEdit ? 'Enregistrer les modifications' : 'Enregistrer le récit'}>
           {saving
             ? <Loader2 className="w-4 h-4 animate-spin" />
-            : isEdit ? 'Enregistrer les modifications' : 'Enregistrer le souvenir'}
+            : isEdit ? 'Enregistrer les modifications' : 'Enregistrer le récit'}
         </button>
       </div>
     </div>

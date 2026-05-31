@@ -624,13 +624,13 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
           </p>
         </section>
 
-        {/* ─── Souvenirs du royaume ──────────────────────────── */}
+        {/* ─── Récits familiaux du royaume ───────────────────── */}
         <section className="space-y-3">
           <h2 className="font-display font-bold text-xl text-heritage-ink border-l-4 border-royal-gold pl-3">
-            Souvenirs du royaume
+            Récits familiaux du royaume
           </h2>
           <p className="text-sm text-heritage-brown font-medium">
-            Enregistre une anecdote, un récit ou un vocal sur ce royaume — il s&apos;ajoutera ici.
+            Enregistre une anecdote ou un récit sur ce royaume, il s&apos;ajoutera ici.
           </p>
           <SouvenirsSection kingdomSlug={slug} />
         </section>
