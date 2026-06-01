@@ -16,15 +16,15 @@ interface SouvenirsSectionProps {
   kingdomSlug?: string
 }
 
-// Tri décroissant : plus récent en haut
-function sortByDateDesc(souvenirs: Souvenir[]): Souvenir[] {
+// Tri chronologique : du plus ancien (en haut) au plus récent (en bas)
+function sortByDateAsc(souvenirs: Souvenir[]): Souvenir[] {
   return [...souvenirs].sort((a, b) => {
     const yA = parseYearFromDate(a.souvenir_date)
     const yB = parseYearFromDate(b.souvenir_date)
-    if (yA !== null && yB !== null) return yB - yA
+    if (yA !== null && yB !== null) return yA - yB
     if (yA !== null) return -1
     if (yB !== null) return 1
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   })
 }
 
@@ -50,7 +50,7 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
       return
     }
     const { data } = await query
-    setSouvenirs(sortByDateDesc(data || []))
+    setSouvenirs(sortByDateAsc(data || []))
     setLoading(false)
   }
 
@@ -199,12 +199,7 @@ function TimelineItem({
         </div>
       </div>
 
-      {souvenir.detail && (
-        <p className="text-sm font-medium text-heritage-ink leading-relaxed whitespace-pre-wrap mb-3">
-          {souvenir.detail}
-        </p>
-      )}
-
+      {/* Illustration éventuelle — juste après le titre, avant le texte */}
       {souvenir.image_url && (
         <button
           onClick={() => setLightboxOpen(true)}
@@ -218,6 +213,12 @@ function TimelineItem({
             className="w-full max-h-64 object-cover"
           />
         </button>
+      )}
+
+      {souvenir.detail && (
+        <p className="text-sm font-medium text-heritage-ink leading-relaxed whitespace-pre-wrap mb-3">
+          {souvenir.detail}
+        </p>
       )}
 
       {souvenir.audio_url && (
