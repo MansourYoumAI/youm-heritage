@@ -15,6 +15,8 @@ interface PersonNodeProps {
   highlighted?: boolean
   /** Souvenirs de cette personne (pour afficher l'indicateur + le popover) */
   souvenirs?: Souvenir[]
+  /** Animation pulse dorée (utilisée pour mettre en évidence le focal au chargement) */
+  pulsing?: boolean
 }
 
 export default function PersonNode({
@@ -24,6 +26,7 @@ export default function PersonNode({
   dimmed = false,
   highlighted = false,
   souvenirs = [],
+  pulsing = false,
 }: PersonNodeProps) {
   const initials = getInitials(person)
   const hasSouvenirs = souvenirs.length > 0
@@ -39,6 +42,22 @@ export default function PersonNode({
         dimmed && 'opacity-20',
       )}
     >
+      {/* Pulse doré pour mettre en évidence le focal au premier chargement */}
+      {pulsing && (
+        <>
+          <span
+            className="absolute inset-0 rounded-2xl pointer-events-none z-10 ring-4 ring-royal-gold"
+            style={{ animation: 'youm-pulse-ring 1.6s ease-out 2' }}
+          />
+          <span
+            className="absolute -inset-2 rounded-2xl pointer-events-none z-0"
+            style={{
+              boxShadow: '0 0 30px 6px rgba(196, 146, 42, 0.5)',
+              animation: 'youm-pulse-glow 1.6s ease-out 2',
+            }}
+          />
+        </>
+      )}
       <button
         onClick={onClick}
         className={cn(

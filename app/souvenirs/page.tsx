@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ScrollText, Crown, Mic, ChevronRight, Calendar } from 'lucide-react'
+import { ScrollText, Crown, Mic, ChevronRight, Calendar, ArrowRight, ArrowLeft, X } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Lightbox from '@/components/Lightbox'
 import { createClient } from '@/lib/supabase'
@@ -27,6 +27,22 @@ export default function SouvenirsPage() {
   const [loading, setLoading] = useState(true)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
+  const [expanded, setExpanded] = useState<RoyalSouvenir | null>(null)
+
+  // Bloque le scroll de la page tant qu'un récit est en lecture pleine
+  useEffect(() => {
+    if (!expanded) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setExpanded(null)
+    }
+    document.addEventListener('keydown', onEsc)
+    return () => {
+      document.body.style.overflow = prev
+      document.removeEventListener('keydown', onEsc)
+    }
+  }, [expanded])
 
   useEffect(() => {
     load()
@@ -158,6 +174,7 @@ export default function SouvenirsPage() {
                 key={s.id}
                 souvenir={s}
                 onImageClick={setLightboxSrc}
+                onExpand={() => setExpanded(s)}
               />
             ))}
           </ol>
@@ -169,6 +186,15 @@ export default function SouvenirsPage() {
           src={lightboxSrc}
           alt=""
           onClose={() => setLightboxSrc(null)}
+        />
+      )}
+
+      {/* Lecture en plein écran du récit — overlay */}
+      {expanded && (
+        <FullSouvenirOverlay
+          souvenir={expanded}
+          onClose={() => setExpanded(null)}
+          onImageClick={setLightboxSrc}
         />
       )}
     </div>
@@ -210,98 +236,255 @@ function FilterChip({
 }
 
 function SouvenirCard({
-  souvenir, onImageClick,
+  souvenir, onImageClick, onExpand,
 }: {
   souvenir: RoyalSouvenir
+  onImageClick: (src: string) => void
+  onExpand: () => void
+}) {
+  const { person } = souvenir
+  const isTruncated = souvenir.detail && souvenir.detail.length > 400
+
+  return (
+    <li>
+      <div
+        className="card p-5 bg-white border-2 border-parchment-300 hover:shadow-warm-lg hover:border-royal-gold/40 transition-all cursor-pointer"
+        onClick={onExpand}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand() } }}
+      >
+        {/* Bandeau personne */}
+        <Link
+          href={`/profil/${person.id}`}
+          onClick={e => e.stopPropagation()}
+          className="flex items-center gap-3 mb-4 group"
+        >
+          <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-royal-gold flex items-center justify-center bg-royal-gold-light flex-shrink-0">
+            {person.profile_picture_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={person.profile_picture_url}
+                alt={`${person.first_name} ${person.last_name}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-sm font-bold text-royal-gold-dark">
+                {getInitials(person)}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-display font-bold text-heritage-ink text-base leading-tight truncate group-hover:underline">
+              {person.first_name} {person.last_name}
+            </p>
+            {person.royal_title && (
+              <p className="inline-block px-2 py-0.5 rounded-full bg-royal-gold-light text-royal-gold-dark text-[10px] font-bold uppercase tracking-wide mt-0.5">
+                {person.royal_title}
+              </p>
+            )}
+          </div>
+          <ChevronRight className="w-4 h-4 text-heritage-brown group-hover:text-heritage-ink" />
+        </Link>
+
+        {/* Contenu du récit */}
+        <div className="pl-1">
+          {souvenir.souvenir_date && (
+            <div className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-0.5 rounded-full bg-navy-50 border border-navy-200">
+              <Calendar className="w-3 h-3 text-navy-600" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-navy-700">
+                {souvenir.souvenir_date}
+              </span>
+            </div>
+          )}
+          <h3 className="font-display font-bold text-heritage-ink text-lg leading-tight">
+            {souvenir.title}
+          </h3>
+
+          {souvenir.image_url && (
+            <button
+              onClick={e => { e.stopPropagation(); onImageClick(souvenir.image_url!) }}
+              className="mt-3 rounded-xl overflow-hidden block w-full cursor-zoom-in border border-parchment-300"
+            >
+              <Image
+                src={souvenir.image_url}
+                alt={souvenir.title}
+                width={600}
+                height={400}
+                className="w-full max-h-72 object-cover"
+              />
+            </button>
+          )}
+
+          {souvenir.detail && (
+            <p
+              className={cn(
+                'text-sm font-medium text-heritage-ink leading-relaxed whitespace-pre-wrap mt-3',
+                isTruncated && 'line-clamp-[8]',
+              )}
+            >
+              {souvenir.detail}
+            </p>
+          )}
+
+          {/* CTA Lire le récit en entier */}
+          <div className="mt-3 flex justify-end">
+            <button
+              onClick={e => { e.stopPropagation(); onExpand() }}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-royal-gold-dark bg-royal-gold-light hover:bg-royal-gold hover:text-white transition-colors"
+            >
+              Lire le récit en entier
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </li>
+  )
+}
+
+/**
+ * Overlay plein écran qui affiche un récit dans son intégralité.
+ * Fond flouté + carte au centre + bouton retour.
+ */
+function FullSouvenirOverlay({
+  souvenir, onClose, onImageClick,
+}: {
+  souvenir: RoyalSouvenir
+  onClose: () => void
   onImageClick: (src: string) => void
 }) {
   const { person } = souvenir
   return (
-    <li className="card p-5 bg-white border-2 border-parchment-300 hover:shadow-warm-md transition-shadow">
-      {/* Bandeau personne */}
-      <Link
-        href={`/profil/${person.id}`}
-        className="flex items-center gap-3 mb-4 group"
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center px-3 sm:px-6 py-6 sm:py-10 overflow-y-auto bg-parchment-100/80 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="relative w-full max-w-3xl bg-white rounded-3xl border-2 border-royal-gold/40 shadow-warm-xl my-auto"
+        onClick={e => e.stopPropagation()}
       >
-        <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-royal-gold flex items-center justify-center bg-royal-gold-light flex-shrink-0">
-          {person.profile_picture_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={person.profile_picture_url}
-              alt={`${person.first_name} ${person.last_name}`}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <span className="text-sm font-bold text-royal-gold-dark">
-              {getInitials(person)}
-            </span>
-          )}
+        {/* Barre du haut : retour + fermer */}
+        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur rounded-t-3xl border-b border-parchment-300 px-5 py-3 flex items-center justify-between">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-heritage-brown hover:text-heritage-ink hover:bg-parchment-100 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Retour aux récits royaux
+          </button>
+          <button
+            onClick={onClose}
+            title="Fermer"
+            aria-label="Fermer"
+            className="p-1.5 rounded-full bg-parchment-100 text-heritage-brown hover:bg-parchment-200"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-display font-bold text-heritage-ink text-base leading-tight truncate group-hover:underline">
-            {person.first_name} {person.last_name}
-          </p>
-          {person.royal_title && (
-            <p className="inline-block px-2 py-0.5 rounded-full bg-royal-gold-light text-royal-gold-dark text-[10px] font-bold uppercase tracking-wide mt-0.5">
-              {person.royal_title}
+
+        {/* Contenu complet */}
+        <div className="px-5 sm:px-8 py-6 sm:py-8">
+          {/* Personne */}
+          <Link
+            href={`/profil/${person.id}`}
+            onClick={onClose}
+            className="flex items-center gap-4 pb-5 mb-5 border-b border-parchment-200 group"
+          >
+            <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-royal-gold flex items-center justify-center bg-royal-gold-light flex-shrink-0">
+              {person.profile_picture_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={person.profile_picture_url}
+                  alt={`${person.first_name} ${person.last_name}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-base font-bold text-royal-gold-dark">
+                  {getInitials(person)}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-display font-bold text-heritage-ink text-xl leading-tight group-hover:underline">
+                {person.first_name} {person.last_name}
+              </p>
+              {person.royal_title && (
+                <p className="inline-block px-2 py-0.5 rounded-full bg-royal-gold-light text-royal-gold-dark text-[11px] font-bold uppercase tracking-wide mt-1">
+                  {person.royal_title}
+                </p>
+              )}
+            </div>
+            <ChevronRight className="w-5 h-5 text-heritage-brown group-hover:text-heritage-ink" />
+          </Link>
+
+          {/* Date + titre */}
+          {souvenir.souvenir_date && (
+            <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1 rounded-full bg-navy-50 border border-navy-200">
+              <Calendar className="w-3.5 h-3.5 text-navy-600" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-navy-700">
+                {souvenir.souvenir_date}
+              </span>
+            </div>
+          )}
+          <h2 className="font-display font-bold text-2xl sm:text-3xl text-heritage-ink leading-tight">
+            {souvenir.title}
+          </h2>
+
+          {/* Image */}
+          {souvenir.image_url && (
+            <button
+              onClick={() => onImageClick(souvenir.image_url!)}
+              className="mt-5 rounded-2xl overflow-hidden block w-full cursor-zoom-in border border-parchment-300"
+            >
+              <Image
+                src={souvenir.image_url}
+                alt={souvenir.title}
+                width={1200}
+                height={800}
+                className="w-full max-h-[60vh] object-cover"
+              />
+            </button>
+          )}
+
+          {/* Texte intégral */}
+          {souvenir.detail && (
+            <div className="prose prose-sm sm:prose-base mt-5 max-w-none">
+              <p className="whitespace-pre-wrap text-heritage-ink leading-relaxed font-medium">
+                {souvenir.detail}
+              </p>
+            </div>
+          )}
+
+          {/* Audio */}
+          {souvenir.audio_url && (
+            <div className="mt-5 flex items-center gap-2">
+              <Mic className="w-4 h-4 text-terracotta-500 flex-shrink-0" />
+              <audio src={souvenir.audio_url} controls className="w-full" />
+            </div>
+          )}
+
+          {/* Source */}
+          {souvenir.source && (
+            <p className="mt-6 pt-4 border-t border-parchment-200 text-xs italic text-heritage-brown">
+              Source : {souvenir.source}
             </p>
           )}
+
+          {/* Bouton retour en bas */}
+          <div className="mt-8 pt-4 border-t border-parchment-200 flex justify-center">
+            <button
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-heritage-ink bg-parchment-100 hover:bg-parchment-200 transition-colors border border-parchment-400"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Retour aux récits royaux
+            </button>
+          </div>
         </div>
-        <ChevronRight className="w-4 h-4 text-heritage-brown group-hover:text-heritage-ink" />
-      </Link>
-
-      {/* Contenu du souvenir */}
-      <div className="pl-1">
-        {souvenir.souvenir_date && (
-          <div className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-0.5 rounded-full bg-navy-50 border border-navy-200">
-            <Calendar className="w-3 h-3 text-navy-600" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-navy-700">
-              {souvenir.souvenir_date}
-            </span>
-          </div>
-        )}
-        <h3 className="font-display font-bold text-heritage-ink text-lg leading-tight">
-          {souvenir.title}
-        </h3>
-        {souvenir.detail && (
-          <p
-            className={cn(
-              'text-sm font-medium text-heritage-ink leading-relaxed whitespace-pre-wrap mt-2',
-              souvenir.detail.length > 600 && 'line-clamp-[10]',
-            )}
-          >
-            {souvenir.detail}
-          </p>
-        )}
-
-        {souvenir.image_url && (
-          <button
-            onClick={() => onImageClick(souvenir.image_url!)}
-            className="mt-3 rounded-xl overflow-hidden block w-full cursor-zoom-in border border-parchment-300"
-          >
-            <Image
-              src={souvenir.image_url}
-              alt={souvenir.title}
-              width={600}
-              height={400}
-              className="w-full max-h-72 object-cover"
-            />
-          </button>
-        )}
-
-        {souvenir.audio_url && (
-          <div className="mt-3 flex items-center gap-2">
-            <Mic className="w-4 h-4 text-terracotta-500 flex-shrink-0" />
-            <audio src={souvenir.audio_url} controls className="w-full" />
-          </div>
-        )}
-
-        {souvenir.source && (
-          <p className="mt-3 pt-2 border-t border-parchment-200 text-[11px] italic text-heritage-brown opacity-70">
-            Source : {souvenir.source}
-          </p>
-        )}
       </div>
-    </li>
+    </div>
   )
 }

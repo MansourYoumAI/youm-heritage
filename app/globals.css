@@ -290,3 +290,25 @@
     padding-right: 1.5rem;
   }
 }
+
+/* Pulse doré pour mettre en évidence le focal de l'arbre au chargement.
+   Anneau qui s'expand et disparaît, plus un halo doux. */
+@keyframes youm-pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+
+@keyframes youm-pulse-glow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}

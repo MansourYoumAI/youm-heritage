@@ -72,7 +72,7 @@ export default function Header({ showAddButton = true }: HeaderProps) {
               className={cn(
                 'inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-bold transition-colors',
                 isRoyals
-                  ? 'bg-heritage-green/10 text-heritage-green'
+                  ? 'bg-parchment-200 text-heritage-ink'
                   : 'text-heritage-brown hover:bg-parchment-200 hover:text-heritage-ink'
               )}
             >
@@ -148,7 +148,7 @@ export default function Header({ showAddButton = true }: HeaderProps) {
               className={cn(
                 'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold flex-1 justify-center',
                 isRoyals
-                  ? 'bg-heritage-green/10 text-heritage-green'
+                  ? 'bg-parchment-200 text-heritage-ink'
                   : 'bg-parchment-100 text-heritage-brown'
               )}
             >

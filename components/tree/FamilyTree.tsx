@@ -5,7 +5,8 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { computeLayout, NODE_W, NODE_H } from '@/lib/treeLayout'
 import PersonNode from './PersonNode'
-import { ZoomIn, ZoomOut, Maximize2, User } from 'lucide-react'
+import { ZoomIn, ZoomOut, Maximize2, LocateFixed, HelpCircle, X, Crown, ScrollText } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface FamilyTreeProps {
   persons: Person[]
@@ -83,11 +84,18 @@ export default function FamilyTree({
   }, [canvasWidth, focalCenterX, focalBottomY])
 
   // Centrage initial après chaque changement de layout/focal
+  // + animation pulse dorée sur le focal pour bien le repérer
+  const [focalPulse, setFocalPulse] = useState(false)
   useEffect(() => {
     if (persons.length === 0) return
     const t = setTimeout(() => centerOnFocal(false), 50)
-    return () => clearTimeout(t)
+    setFocalPulse(true)
+    const tPulse = setTimeout(() => setFocalPulse(false), 3500)
+    return () => { clearTimeout(t); clearTimeout(tPulse) }
   }, [layout, focalId, persons.length, centerOnFocal])
+
+  // État légende (panneau dépliable)
+  const [legendOpen, setLegendOpen] = useState(false)
 
   // Centrage sur une personne ciblée (depuis la recherche)
   useEffect(() => {
@@ -202,11 +210,19 @@ export default function FamilyTree({
           <ZoomOut className="w-5 h-5" />
         </button>
         <button
-          onClick={() => centerOnFocal(true)}
-          className="w-10 h-10 bg-white rounded-lg shadow-warm-md border border-parchment-400 flex items-center justify-center text-heritage-ink hover:bg-parchment-200 transition-colors"
-          title="Recentrer sur le focal"
+          onClick={() => {
+            centerOnFocal(true)
+            setFocalPulse(true)
+            setTimeout(() => setFocalPulse(false), 3500)
+          }}
+          className="group relative w-10 h-10 bg-white rounded-lg shadow-warm-md border-2 border-royal-gold/40 flex items-center justify-center text-royal-gold-dark hover:bg-royal-gold-light transition-colors"
+          title="Recentrer sur moi"
         >
-          <User className="w-5 h-5" />
+          <LocateFixed className="w-5 h-5" />
+          {/* Label flottant au survol */}
+          <span className="absolute right-full mr-2 px-2 py-1 rounded-md bg-heritage-ink text-white text-[11px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-warm-md">
+            Recentrer
+          </span>
         </button>
         <button
           onClick={() => transformRef.current?.resetTransform()}
@@ -215,7 +231,94 @@ export default function FamilyTree({
         >
           <Maximize2 className="w-5 h-5" />
         </button>
+        <button
+          onClick={() => setLegendOpen(o => !o)}
+          className={cn(
+            'w-10 h-10 rounded-lg shadow-warm-md border flex items-center justify-center transition-colors',
+            legendOpen
+              ? 'bg-heritage-ink text-white border-heritage-ink'
+              : 'bg-white text-heritage-ink border-parchment-400 hover:bg-parchment-200',
+          )}
+          title="Légende des icônes"
+        >
+          <HelpCircle className="w-5 h-5" />
+        </button>
       </div>
+
+      {/* Panneau Légende */}
+      {legendOpen && (
+        <div className="absolute top-4 right-16 z-30 w-72 bg-white rounded-2xl shadow-warm-xl border-2 border-parchment-400 p-4 animate-fade-in">
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-parchment-200">
+            <h3 className="font-display font-bold text-sm text-heritage-ink">
+              Légende
+            </h3>
+            <button
+              onClick={() => setLegendOpen(false)}
+              className="p-1 rounded-md text-heritage-brown hover:bg-parchment-100"
+              aria-label="Fermer la légende"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <ul className="space-y-2.5 text-xs">
+            <li className="flex items-start gap-2.5">
+              <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD43B' }}>
+                <Crown className="w-3.5 h-3.5 text-heritage-ink" fill="currentColor" fillOpacity={0.2} />
+              </span>
+              <span className="text-heritage-brown leading-snug pt-1">
+                <strong className="text-heritage-ink">Ancêtre royal</strong> — a porté un titre (Damel, Teigne, Almany, Linguère…)
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="flex-shrink-0 w-7 h-7 rounded-full bg-heritage-green flex items-center justify-center text-white">
+                <ScrollText className="w-3.5 h-3.5" strokeWidth={2.2} />
+              </span>
+              <span className="text-heritage-brown leading-snug pt-1">
+                <strong className="text-heritage-ink">Récits familiaux</strong> disponibles — cliquer pour les lire
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
+                <svg width="20" height="14" viewBox="0 0 20 14">
+                  <line x1="0" y1="7" x2="20" y2="7" stroke="#B8A07A" strokeWidth="2.5" strokeLinecap="round" />
+                  <circle cx="10" cy="7" r="2.5" fill="#B8A07A" />
+                </svg>
+              </span>
+              <span className="text-heritage-brown leading-snug pt-1">
+                <strong className="text-heritage-ink">Couple</strong> — mariage ou union
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
+                <svg width="14" height="20" viewBox="0 0 14 20">
+                  <line x1="7" y1="0" x2="7" y2="20" stroke="#C7B59A" strokeWidth="1.8" strokeDasharray="3 3" strokeLinecap="round" />
+                </svg>
+              </span>
+              <span className="text-heritage-brown leading-snug pt-1">
+                <strong className="text-heritage-ink">Filiation</strong> — lien parent-enfant
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
+                <svg width="22" height="10" viewBox="0 0 22 10">
+                  <line x1="0" y1="5" x2="22" y2="5" stroke="#A0522D" strokeWidth="1.6" strokeDasharray="2 3" strokeLinecap="round" />
+                </svg>
+              </span>
+              <span className="text-heritage-brown leading-snug pt-1">
+                <strong className="text-heritage-ink">Cousin·s</strong> — lien entre cousins de même génération
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5 pt-1.5 border-t border-parchment-200">
+              <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-royal-gold/20 border border-royal-gold/40 flex items-center justify-center text-royal-gold-dark">
+                <LocateFixed className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-heritage-brown leading-snug pt-1">
+                <strong className="text-heritage-ink">Recentrer</strong> — retour à la personne la plus récente (vous)
+              </span>
+            </li>
+          </ul>
+        </div>
+      )}
 
       <TransformWrapper
         ref={transformRef}
@@ -314,6 +417,7 @@ export default function FamilyTree({
                   }
                   highlighted={!!searchMatchIds?.has(person.id)}
                   souvenirs={souvenirsByPerson?.get(person.id) || []}
+                  pulsing={focalPulse && person.id === focalId}
                   onClick={() => {
                     if (selectionMode) {
                       const next = new Set(selectedIds)
