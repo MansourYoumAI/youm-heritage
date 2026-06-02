@@ -240,13 +240,13 @@ function drawDescription(doc: jsPDF, x: number, y: number, w: number) {
   ]
 
   doc.setFont('times', 'italic')
-  const fontSize = 14
+  const fontSize = 16
   doc.setFontSize(fontSize)
   setText(doc, C_BROWN)
 
-  const lineHeight = 6
-  const paraGap = 3.5
-  const padLeft = 6
+  const lineHeight = 6.8
+  const paraGap = 4
+  const padLeft = 7
 
   // Mesure totale pour le trait latéral
   let totalH = 0
@@ -357,10 +357,12 @@ export async function downloadFamilyTreePdf(
   })
   doc.text(`Édition du ${today}`, PAGE_W / 2, 126, { align: 'center' })
 
-  // ─── Encart de description (top-LEFT, discret, sans fond)
-  const descW = 240
-  const descX = SIDE_MARGIN
-  const descY = 40
+  // ─── Encart de description (top-RIGHT, discret, sans fond)
+  // Aligné avec le haut visuel du titre "Famille Youm" (qui est à y=70 baseline,
+  // donc le sommet du glyph est ~y=45)
+  const descW = 280
+  const descX = PAGE_W - SIDE_MARGIN - descW
+  const descY = 48
   drawDescription(doc, descX, descY, descW)
 
   // ─── Légende ultra-compacte (bottom-right, juste "Ancêtre royal")
@@ -374,7 +376,7 @@ export async function downloadFamilyTreePdf(
   // On étire l'arbre HORIZONTALEMENT pour que les cartes prennent plus
   // de largeur et que les noms longs ne wrappent pas. Le facteur est
   // appliqué aux positions X ET à la largeur des cartes (NODE_W).
-  const X_STRETCH = 1.45
+  const X_STRETCH = 1.65
   const treeAreaW = PAGE_W - 2 * SIDE_MARGIN
   const treeAreaH = PAGE_H - TOP_MARGIN - BOTTOM_MARGIN
   const stretchedLayoutW = layout.width * X_STRETCH
