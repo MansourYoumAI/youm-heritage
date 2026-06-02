@@ -44,26 +44,26 @@ export default function Header({}: HeaderProps) {
             <Link
               href="/"
               className={cn(
-                'inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-bold transition-colors',
+                'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors',
                 isHome
                   ? 'bg-parchment-200 text-heritage-ink'
                   : 'text-heritage-brown hover:bg-parchment-200 hover:text-heritage-ink'
               )}
             >
-              <TreeDeciduous className="w-4 h-4" />
+              <TreeDeciduous className="w-3.5 h-3.5" />
               Arbre généalogique
             </Link>
 
             <Link
               href="/souvenirs"
               className={cn(
-                'inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-bold transition-colors',
+                'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors',
                 isRoyals
                   ? 'bg-parchment-200 text-heritage-ink'
                   : 'text-heritage-brown hover:bg-parchment-200 hover:text-heritage-ink'
               )}
             >
-              <ScrollText className="w-4 h-4" />
+              <ScrollText className="w-3.5 h-3.5" />
               Récits familiaux royaux
             </Link>
 

@@ -174,9 +174,8 @@ export default function HomePage() {
       <Header />
 
       <div className="flex-1 relative min-h-0">
-        {/* Barre d'actions flottante en haut — recherche + ajouter + télécharger
-            Tous discrets, transparents au repos, posés sur le parchment du tree */}
-        <div className="absolute top-3 left-3 z-30 flex items-center gap-2 flex-wrap">
+        {/* Recherche flottante en haut-gauche */}
+        <div className="absolute top-3 left-3 z-30">
           {/* 1) Recherche */}
           <div className="relative w-44 sm:w-56">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-heritage-brown opacity-50 pointer-events-none" />
@@ -238,29 +237,6 @@ export default function HomePage() {
               </div>
             )}
           </div>
-
-          {/* 2) Ajouter un membre de la famille */}
-          <button
-            onClick={openAddDrawer}
-            className="inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 text-xs rounded-full border border-transparent text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors"
-            title="Ajouter un membre de la famille"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span className="font-semibold">Ajouter un membre de la famille</span>
-          </button>
-
-          {/* 3) Télécharger l'arbre généalogique */}
-          <button
-            onClick={downloadPdf}
-            disabled={downloadingPdf}
-            className="inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 text-xs rounded-full border border-transparent text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors disabled:opacity-50"
-            title="Télécharger l'arbre généalogique en PDF"
-          >
-            {downloadingPdf
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : <Download className="w-3.5 h-3.5" />}
-            <span className="font-semibold">Télécharger l&apos;arbre généalogique</span>
-          </button>
         </div>
         {loading ? (
           <div className="w-full h-full flex items-center justify-center">
@@ -311,6 +287,9 @@ export default function HomePage() {
               onToggleRoyalFilter={() => setRoyalFilter(v => !v)}
               souvenirFilter={souvenirFilter}
               onToggleSouvenirFilter={() => setSouvenirFilter(v => !v)}
+              onAddMember={openAddDrawer}
+              onDownloadPdf={downloadPdf}
+              downloadingPdf={downloadingPdf}
             />
           </div>
         )}

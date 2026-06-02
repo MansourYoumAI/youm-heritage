@@ -478,8 +478,8 @@ export function computeLayout(
     }
   }
 
-  // Fallback : enfants sans couple parental identifié → trait individuel
-  // depuis chaque parent.
+  // Fallback : enfants sans couple parental identifié → T-bar depuis chaque
+  // parent individuellement (toujours perpendiculaire, pas de trait diagonal).
   for (const [childId, parentList] of parentsOf) {
     if (childrenWithCoupleEdge.has(childId)) continue
     const childPos = positions.get(childId)
@@ -492,11 +492,27 @@ export function computeLayout(
       const key = `${parentId}-${childId}`
       if (drawnEdges.has(key)) continue
       drawnEdges.add(key)
+      const parentCenterX = parentPos.x + NODE_W / 2
+      const parentBottomY = parentPos.y + NODE_H
+      // T-bar : vertical depuis le parent, horizontal si décalage, vertical jusqu'à l'enfant.
+      // Si parent et enfant sont alignés en X, ça forme une seule ligne verticale parfaite.
+      const busBarY = (parentBottomY + childTopY) / 2
+      // 1) Vertical depuis le parent jusqu'à la barre
       parentEdges.push({
-        x1: parentPos.x + NODE_W / 2,
-        y1: parentPos.y + NODE_H,
-        x2: childCenterX,
-        y2: childTopY,
+        x1: parentCenterX, y1: parentBottomY,
+        x2: parentCenterX, y2: busBarY,
+      })
+      // 2) Horizontale (seulement si décalage)
+      if (Math.abs(parentCenterX - childCenterX) > 0.5) {
+        parentEdges.push({
+          x1: parentCenterX, y1: busBarY,
+          x2: childCenterX, y2: busBarY,
+        })
+      }
+      // 3) Vertical depuis la barre jusqu'à l'enfant
+      parentEdges.push({
+        x1: childCenterX, y1: busBarY,
+        x2: childCenterX, y2: childTopY,
       })
     }
   }

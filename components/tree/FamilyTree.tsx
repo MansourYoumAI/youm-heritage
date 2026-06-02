@@ -5,7 +5,7 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { computeLayout, NODE_W, NODE_H } from '@/lib/treeLayout'
 import PersonNode from './PersonNode'
-import { HelpCircle, X, Crown, ScrollText } from 'lucide-react'
+import { HelpCircle, X, Crown, ScrollText, UserPlus, Download, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface FamilyTreeProps {
@@ -27,6 +27,10 @@ interface FamilyTreeProps {
   /** Filtre "récits familiaux" : assombrit les personnes sans récit */
   souvenirFilter?: boolean
   onToggleSouvenirFilter?: () => void
+  /** Actions flottantes à droite (ajouter / télécharger) */
+  onAddMember?: () => void
+  onDownloadPdf?: () => void
+  downloadingPdf?: boolean
 }
 
 export default function FamilyTree({
@@ -45,6 +49,9 @@ export default function FamilyTree({
   onToggleRoyalFilter,
   souvenirFilter = false,
   onToggleSouvenirFilter,
+  onAddMember,
+  onDownloadPdf,
+  downloadingPdf = false,
 }: FamilyTreeProps) {
   const transformRef = useRef<any>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -204,17 +211,40 @@ export default function FamilyTree({
 
   return (
     <div className="relative w-full h-full bg-parchment-100 overflow-hidden rounded-xl" ref={wrapperRef}>
-      <div className="absolute top-4 right-4 z-20">
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
+        {onAddMember && (
+          <button
+            onClick={onAddMember}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-normal text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors"
+            title="Ajouter un parent"
+          >
+            <UserPlus className="w-3 h-3" />
+            <span>Ajouter un parent</span>
+          </button>
+        )}
+        {onDownloadPdf && (
+          <button
+            onClick={onDownloadPdf}
+            disabled={downloadingPdf}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-normal text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors disabled:opacity-50"
+            title="Télécharger en PDF"
+          >
+            {downloadingPdf
+              ? <Loader2 className="w-3 h-3 animate-spin" />
+              : <Download className="w-3 h-3" />}
+            <span>Télécharger en pdf</span>
+          </button>
+        )}
         <button
           onClick={() => {
             setLegendOpen(o => !o)
             setLegendButtonPulse(false)
           }}
           className={cn(
-            'relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors',
+            'relative inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-normal transition-colors',
             legendOpen
               ? 'bg-heritage-ink text-white'
-              : 'bg-parchment-50 border border-parchment-400 text-heritage-ink hover:bg-parchment-200 shadow-warm-sm',
+              : 'text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink',
           )}
           title="Légende"
         >
@@ -222,19 +252,19 @@ export default function FamilyTree({
           {legendButtonPulse && !legendOpen && (
             <>
               <span
-                className="absolute inset-0 rounded-full pointer-events-none ring-4 ring-royal-gold"
+                className="absolute inset-0 rounded-full pointer-events-none ring-2 ring-royal-gold"
                 style={{ animation: 'youm-pulse-ring 1.6s ease-out 2' }}
               />
               <span
-                className="absolute -inset-2 rounded-full pointer-events-none"
+                className="absolute -inset-1 rounded-full pointer-events-none"
                 style={{
-                  boxShadow: '0 0 24px 4px rgba(196, 146, 42, 0.55)',
+                  boxShadow: '0 0 14px 2px rgba(196, 146, 42, 0.5)',
                   animation: 'youm-pulse-glow 1.6s ease-out 2',
                 }}
               />
             </>
           )}
-          <HelpCircle className="w-3.5 h-3.5 relative z-10" />
+          <HelpCircle className="w-3 h-3 relative z-10" />
           <span className="relative z-10">Légende</span>
         </button>
       </div>
