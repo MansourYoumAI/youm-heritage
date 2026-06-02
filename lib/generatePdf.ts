@@ -25,9 +25,11 @@ const C_GOLD_DARK: RGB = [139, 98, 20]
 const C_BORDER: RGB = [224, 208, 184]
 const C_LINE_COUPLE: RGB = [184, 160, 122]
 const C_LINE_PARENT: RGB = [212, 196, 168]
-const C_BG_MALE: RGB = [232, 240, 230]
+const C_BG_MALE: RGB = [217, 230, 244]   // bleu pâle (navy clair)
 const C_BG_FEMALE: RGB = [250, 228, 214]
 const C_BG_NEUTRAL: RGB = [240, 235, 227]
+// Couleur du texte initial des hommes — bleu navy lisible sur fond bleu pâle
+const C_BG_MALE_TEXT: RGB = [30, 58, 95] // navy-500
 
 // Helpers pour éviter de répéter le spread partout
 const setFill = (doc: jsPDF, c: RGB) => doc.setFillColor(c[0], c[1], c[2])
@@ -77,6 +79,7 @@ function drawInitialsBox(
   doc.setFont('times', 'bold')
   doc.setFontSize(Math.max(8, 7 * scale))
   if (person.is_royal) setText(doc, C_GOLD_DARK)
+  else if (person.gender === 'homme') setText(doc, C_BG_MALE_TEXT)
   else setText(doc, C_BROWN)
   doc.text(initials, x + size / 2, y + size / 2 + 2.2 * scale, { align: 'center' })
 }
@@ -88,6 +91,59 @@ function drawDecorativeBorder(doc: jsPDF) {
   doc.rect(m, m, PAGE_W - 2 * m, PAGE_H - 2 * m)
   doc.setLineWidth(0.2)
   doc.rect(m + 4, m + 4, PAGE_W - 2 * m - 8, PAGE_H - 2 * m - 8)
+}
+
+/**
+ * Dessine un arbre sépia ultra-discret en filigrane sur le fond.
+ * Tronc + couronne (groupe de cercles organiques). Tracé en couleur
+ * pré-mixée (parchment + sepia à ~6%) pour éviter les pbs d'opacité
+ * sur certaines versions de jsPDF. Doit être appelé tout en haut, avant
+ * le contenu, pour rester en arrière-plan.
+ */
+function drawBackgroundTree(doc: jsPDF) {
+  // Sépia pré-mixé avec le parchemin : équivalent visuel de ~7% d'opacité
+  // sépia (#705840) sur fond #F9F6EF. Reste très léger, vraiment filigrane.
+  const sepiaLight = [237, 232, 222] as const
+  const sepiaTrunk = [225, 215, 200] as const
+
+  const cx = PAGE_W / 2
+  const groundY = PAGE_H * 0.82
+  const crownCy = PAGE_H * 0.35
+  const treeScale = Math.min(PAGE_W, PAGE_H) / 1000
+
+  // Tronc — trapèze légèrement évasé en bas
+  doc.setFillColor(sepiaTrunk[0], sepiaTrunk[1], sepiaTrunk[2])
+  const trunkBottomW = 70 * treeScale * 6
+  const trunkTopW = 40 * treeScale * 6
+  const trunkTopY = crownCy + 30
+  const trunkLines: Array<[number, number]> = [
+    [trunkBottomW, 0],
+    [-(trunkBottomW - trunkTopW) / 2, -(groundY - trunkTopY)],
+    [-trunkTopW, 0],
+  ]
+  doc.lines(
+    trunkLines,
+    cx - trunkBottomW / 2,
+    groundY,
+    [1, 1],
+    'F',
+    true,
+  )
+
+  // Couronne — cluster de cercles organiques
+  doc.setFillColor(sepiaLight[0], sepiaLight[1], sepiaLight[2])
+  const r = 180 * treeScale * 1.3
+  doc.circle(cx, crownCy, r, 'F')
+  doc.circle(cx - r * 0.65, crownCy + r * 0.20, r * 0.70, 'F')
+  doc.circle(cx + r * 0.65, crownCy + r * 0.20, r * 0.70, 'F')
+  doc.circle(cx - r * 0.40, crownCy - r * 0.55, r * 0.55, 'F')
+  doc.circle(cx + r * 0.40, crownCy - r * 0.55, r * 0.55, 'F')
+  doc.circle(cx, crownCy - r * 0.75, r * 0.45, 'F')
+  doc.circle(cx, crownCy + r * 0.55, r * 0.65, 'F')
+
+  // Sol léger sous l'arbre (ellipse plate)
+  doc.setFillColor(sepiaTrunk[0], sepiaTrunk[1], sepiaTrunk[2])
+  doc.ellipse(cx, groundY + 4, trunkBottomW * 1.4, 8, 'F')
 }
 
 /**
@@ -284,6 +340,9 @@ export async function downloadFamilyTreePdf(
   // ─── Fond parchemin
   setFill(doc, C_PARCHMENT)
   doc.rect(0, 0, PAGE_W, PAGE_H, 'F')
+
+  // ─── Arbre sépia en filigrane (filigrane derrière le contenu)
+  drawBackgroundTree(doc)
 
   // ─── Liseré décoratif doré
   drawDecorativeBorder(doc)
