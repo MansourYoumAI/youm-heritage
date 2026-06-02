@@ -9,7 +9,7 @@ const PAGE_H = 841
 
 // Marges
 const TOP_MARGIN = 145
-const SIDE_MARGIN = 60
+const SIDE_MARGIN = 30
 const BOTTOM_MARGIN = 80
 
 // Couleurs (RGB) — typées explicitement pour éviter les spreads sur tuples
@@ -55,6 +55,16 @@ async function loadImageAsBase64(url: string): Promise<string | null> {
   }
 }
 
+/** Variante qui retourne aussi le format (PNG/JPEG) pour jsPDF.addImage. */
+async function loadImageAsBase64Full(
+  url: string,
+): Promise<{ data: string; format: 'PNG' | 'JPEG' } | null> {
+  const data = await loadImageAsBase64(url)
+  if (!data) return null
+  const format: 'PNG' | 'JPEG' = data.startsWith('data:image/png') ? 'PNG' : 'JPEG'
+  return { data, format }
+}
+
 function drawInitialsBox(
   doc: jsPDF,
   person: Person,
@@ -94,56 +104,54 @@ function drawDecorativeBorder(doc: jsPDF) {
 }
 
 /**
- * Dessine un arbre sépia ultra-discret en filigrane sur le fond.
- * Tronc + couronne (groupe de cercles organiques). Tracé en couleur
- * pré-mixée (parchment + sepia à ~6%) pour éviter les pbs d'opacité
- * sur certaines versions de jsPDF. Doit être appelé tout en haut, avant
- * le contenu, pour rester en arrière-plan.
+ * Place une image de baobab en filigrane sur le fond du PDF, avec une
+ * opacité très très faible (juste suggéré). Si l'image n'est pas
+ * accessible (404, problème CORS), on n'affiche rien.
  */
-function drawBackgroundTree(doc: jsPDF) {
-  // Sépia pré-mixé avec le parchemin : équivalent visuel de ~7% d'opacité
-  // sépia (#705840) sur fond #F9F6EF. Reste très léger, vraiment filigrane.
-  const sepiaLight = [237, 232, 222] as const
-  const sepiaTrunk = [225, 215, 200] as const
+function drawBackgroundTreeImage(
+  doc: jsPDF,
+  watermarkB64: { data: string; format: 'PNG' | 'JPEG' } | null,
+) {
+  if (!watermarkB64) return
 
-  const cx = PAGE_W / 2
-  const groundY = PAGE_H * 0.82
-  const crownCy = PAGE_H * 0.35
-  const treeScale = Math.min(PAGE_W, PAGE_H) / 1000
+  // Active l'opacité ultra-discrète via GState (jsPDF v2+)
+  // Cible : ~12% d'opacité, juste perceptible
+  const docAny = doc as unknown as {
+    GState?: new (opts: { opacity: number }) => unknown
+    setGState?: (gs: unknown) => void
+  }
+  const supportsGState = typeof docAny.setGState === 'function' && !!docAny.GState
 
-  // Tronc — trapèze légèrement évasé en bas
-  doc.setFillColor(sepiaTrunk[0], sepiaTrunk[1], sepiaTrunk[2])
-  const trunkBottomW = 70 * treeScale * 6
-  const trunkTopW = 40 * treeScale * 6
-  const trunkTopY = crownCy + 30
-  const trunkLines: Array<[number, number]> = [
-    [trunkBottomW, 0],
-    [-(trunkBottomW - trunkTopW) / 2, -(groundY - trunkTopY)],
-    [-trunkTopW, 0],
-  ]
-  doc.lines(
-    trunkLines,
-    cx - trunkBottomW / 2,
-    groundY,
-    [1, 1],
-    'F',
-    true,
-  )
+  if (supportsGState && docAny.GState && docAny.setGState) {
+    try {
+      docAny.setGState(new docAny.GState({ opacity: 0.12 }))
+    } catch {
+      // si ça plante, on continue sans opacité (l'image est déjà très claire)
+    }
+  }
 
-  // Couronne — cluster de cercles organiques
-  doc.setFillColor(sepiaLight[0], sepiaLight[1], sepiaLight[2])
-  const r = 180 * treeScale * 1.3
-  doc.circle(cx, crownCy, r, 'F')
-  doc.circle(cx - r * 0.65, crownCy + r * 0.20, r * 0.70, 'F')
-  doc.circle(cx + r * 0.65, crownCy + r * 0.20, r * 0.70, 'F')
-  doc.circle(cx - r * 0.40, crownCy - r * 0.55, r * 0.55, 'F')
-  doc.circle(cx + r * 0.40, crownCy - r * 0.55, r * 0.55, 'F')
-  doc.circle(cx, crownCy - r * 0.75, r * 0.45, 'F')
-  doc.circle(cx, crownCy + r * 0.55, r * 0.65, 'F')
+  // Centre l'image, occupe ~55% de la largeur (assez grand mais aéré)
+  const imgW = PAGE_W * 0.55
+  const aspect = 3 / 2 // ratio image fournie (env. 1518x1011)
+  const imgH = imgW / aspect
+  const imgX = (PAGE_W - imgW) / 2
+  // Verticalement : on centre légèrement vers le bas pour évoquer un sol
+  const imgY = (PAGE_H - imgH) / 2 + PAGE_H * 0.05
 
-  // Sol léger sous l'arbre (ellipse plate)
-  doc.setFillColor(sepiaTrunk[0], sepiaTrunk[1], sepiaTrunk[2])
-  doc.ellipse(cx, groundY + 4, trunkBottomW * 1.4, 8, 'F')
+  try {
+    doc.addImage(watermarkB64.data, watermarkB64.format, imgX, imgY, imgW, imgH, undefined, 'FAST')
+  } catch {
+    // ignore
+  }
+
+  // Restaure l'opacité pleine pour le reste du contenu
+  if (supportsGState && docAny.GState && docAny.setGState) {
+    try {
+      docAny.setGState(new docAny.GState({ opacity: 1 }))
+    } catch {
+      // ignore
+    }
+  }
 }
 
 /**
@@ -224,86 +232,86 @@ function drawLegend(doc: jsPDF, x: number, y: number, w: number, h: number) {
   // Fond + bordure
   doc.setFillColor(255, 255, 255)
   setDraw(doc, C_BORDER)
-  doc.setLineWidth(0.5)
-  doc.roundedRect(x, y, w, h, 3, 3, 'FD')
+  doc.setLineWidth(0.8)
+  doc.roundedRect(x, y, w, h, 4, 4, 'FD')
 
   // Titre "Légende"
   doc.setFont('times', 'bold')
-  doc.setFontSize(14)
+  doc.setFontSize(20)
   setText(doc, C_INK)
-  doc.text('Légende', x + 8, y + 11)
+  doc.text('Légende', x + 12, y + 16)
 
   // Trait doré sous le titre
   setDraw(doc, C_GOLD)
-  doc.setLineWidth(0.4)
-  doc.line(x + 8, y + 13.5, x + 30, y + 13.5)
+  doc.setLineWidth(0.6)
+  doc.line(x + 12, y + 20, x + 60, y + 20)
 
   // ─── Items
-  const iconColX = x + 8
-  const iconCenterX = iconColX + 7  // centre des icônes (col de 14mm)
-  const textColX = x + 22
-  const textW = w - 30
-  const lineHeight = 12
-  let rowY = y + 22
+  const iconColX = x + 12
+  const iconCenterX = iconColX + 9  // centre des icônes (col de 18mm)
+  const textColX = x + 32
+  const textW = w - 44
+  const lineHeight = 18
+  let rowY = y + 32
 
   // 1) Couronne royale
-  drawRoyalCrownBadge(doc, iconCenterX, rowY + 3, 4)
+  drawRoyalCrownBadge(doc, iconCenterX, rowY + 4, 6)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
+  doc.setFontSize(13)
   setText(doc, C_INK)
   doc.text('Ancêtre royal', textColX, rowY + 1, { baseline: 'top' })
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
+  doc.setFontSize(10)
   setText(doc, C_BROWN)
-  doc.text('Titre Damel, Teigne, Almany, Linguère…', textColX, rowY + 5.5, { baseline: 'top', maxWidth: textW })
-  rowY += lineHeight + 2
+  doc.text('Titre Damel, Teigne, Almany, Linguère…', textColX, rowY + 7, { baseline: 'top', maxWidth: textW })
+  rowY += lineHeight + 4
 
   // 2) Couple (ligne dorée + point)
   setDraw(doc, C_LINE_COUPLE)
-  doc.setLineWidth(1.4)
-  doc.line(iconColX, rowY + 3, iconColX + 14, rowY + 3)
+  doc.setLineWidth(1.8)
+  doc.line(iconColX, rowY + 4, iconColX + 18, rowY + 4)
   setFill(doc, C_LINE_COUPLE)
-  doc.circle(iconColX + 7, rowY + 3, 1.2, 'F')
+  doc.circle(iconColX + 9, rowY + 4, 1.6, 'F')
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
+  doc.setFontSize(13)
   setText(doc, C_INK)
   doc.text('Couple', textColX, rowY + 1, { baseline: 'top' })
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
+  doc.setFontSize(10)
   setText(doc, C_BROWN)
-  doc.text('Mariage ou union', textColX, rowY + 5.5, { baseline: 'top', maxWidth: textW })
+  doc.text('Mariage ou union', textColX, rowY + 7, { baseline: 'top', maxWidth: textW })
   rowY += lineHeight
 
   // 3) Filiation (vertical pointillé)
   setDraw(doc, C_LINE_PARENT)
-  doc.setLineWidth(1)
-  doc.setLineDashPattern([1.5, 1], 0)
-  doc.line(iconColX + 7, rowY, iconColX + 7, rowY + 7)
+  doc.setLineWidth(1.3)
+  doc.setLineDashPattern([1.8, 1.2], 0)
+  doc.line(iconColX + 9, rowY, iconColX + 9, rowY + 10)
   doc.setLineDashPattern([], 0)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
+  doc.setFontSize(13)
   setText(doc, C_INK)
   doc.text('Filiation', textColX, rowY + 1, { baseline: 'top' })
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
+  doc.setFontSize(10)
   setText(doc, C_BROWN)
-  doc.text('Lien parent-enfant', textColX, rowY + 5.5, { baseline: 'top', maxWidth: textW })
+  doc.text('Lien parent-enfant', textColX, rowY + 7, { baseline: 'top', maxWidth: textW })
   rowY += lineHeight
 
   // 4) Cousin (horizontal pointillé terracotta)
-  doc.setDrawColor(160, 82, 45) // terracotta-ish #A0522D
-  doc.setLineWidth(1)
-  doc.setLineDashPattern([1.2, 1.6], 0)
-  doc.line(iconColX, rowY + 3, iconColX + 14, rowY + 3)
+  doc.setDrawColor(160, 82, 45)
+  doc.setLineWidth(1.3)
+  doc.setLineDashPattern([1.5, 2], 0)
+  doc.line(iconColX, rowY + 4, iconColX + 18, rowY + 4)
   doc.setLineDashPattern([], 0)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
+  doc.setFontSize(13)
   setText(doc, C_INK)
   doc.text('Cousin·s', textColX, rowY + 1, { baseline: 'top' })
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
+  doc.setFontSize(10)
   setText(doc, C_BROWN)
-  doc.text('Lien entre cousins de même génération', textColX, rowY + 5.5, { baseline: 'top', maxWidth: textW })
+  doc.text('Lien entre cousins de même génération', textColX, rowY + 7, { baseline: 'top', maxWidth: textW })
 }
 
 export async function downloadFamilyTreePdf(
@@ -317,16 +325,17 @@ export async function downloadFamilyTreePdf(
     return
   }
 
-  // Pré-charger toutes les photos en parallèle
+  // Pré-charger toutes les photos en parallèle + le filigrane baobab
   const photoCache = new Map<string, string>()
-  await Promise.all(
-    persons.map(async p => {
+  const [watermarkB64] = await Promise.all([
+    loadImageAsBase64Full('/baobab-watermark.png'),
+    ...persons.map(async p => {
       if (p.profile_picture_url) {
         const b64 = await loadImageAsBase64(p.profile_picture_url)
         if (b64) photoCache.set(p.id, b64)
       }
     }),
-  )
+  ])
 
   const layout = computeLayout(persons, relationships, focalId)
 
@@ -341,8 +350,8 @@ export async function downloadFamilyTreePdf(
   setFill(doc, C_PARCHMENT)
   doc.rect(0, 0, PAGE_W, PAGE_H, 'F')
 
-  // ─── Arbre sépia en filigrane (filigrane derrière le contenu)
-  drawBackgroundTree(doc)
+  // ─── Arbre sépia en filigrane (image baobab très transparente)
+  drawBackgroundTreeImage(doc, watermarkB64)
 
   // ─── Liseré décoratif doré
   drawDecorativeBorder(doc)
@@ -375,9 +384,9 @@ export async function downloadFamilyTreePdf(
   })
   doc.text(`Édition du ${today}`, PAGE_W / 2, 126, { align: 'center' })
 
-  // ─── Légende des pictogrammes (top-right, en dehors de l'arbre)
-  const legendW = 130
-  const legendH = 72
+  // ─── Légende des pictogrammes (top-right, plus grande et lisible)
+  const legendW = 220
+  const legendH = 115
   const legendX = PAGE_W - SIDE_MARGIN - legendW
   const legendY = TOP_MARGIN - legendH - 5
   drawLegend(doc, legendX, legendY, legendW, legendH)
@@ -388,7 +397,7 @@ export async function downloadFamilyTreePdf(
   const scaleX = treeAreaW / layout.width
   const scaleY = treeAreaH / layout.height
   // Plafond : éviter des cartes gigantesques quand l'arbre est petit
-  const MAX_SCALE = 0.55
+  const MAX_SCALE = 0.85
   const scale = Math.min(scaleX, scaleY, MAX_SCALE)
 
   const scaledW = layout.width * scale
