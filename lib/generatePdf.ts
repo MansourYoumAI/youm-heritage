@@ -130,13 +130,13 @@ function drawBackgroundTreeImage(
     }
   }
 
-  // Centre l'image, occupe ~55% de la largeur (assez grand mais aéré)
-  const imgW = PAGE_W * 0.55
+  // Centre l'image, occupe ~80% de la largeur (grand baobab imposant)
+  const imgW = PAGE_W * 0.80
   const aspect = 3 / 2 // ratio image fournie (env. 1518x1011)
   const imgH = imgW / aspect
   const imgX = (PAGE_W - imgW) / 2
   // Verticalement : on centre légèrement vers le bas pour évoquer un sol
-  const imgY = (PAGE_H - imgH) / 2 + PAGE_H * 0.05
+  const imgY = (PAGE_H - imgH) / 2 + PAGE_H * 0.04
 
   try {
     doc.addImage(watermarkB64.data, watermarkB64.format, imgX, imgY, imgW, imgH, undefined, 'FAST')
@@ -240,13 +240,13 @@ function drawDescription(doc: jsPDF, x: number, y: number, w: number) {
   ]
 
   doc.setFont('times', 'italic')
-  const fontSize = 11
+  const fontSize = 14
   doc.setFontSize(fontSize)
   setText(doc, C_BROWN)
 
-  const lineHeight = 4.8
-  const paraGap = 3
-  const padLeft = 5
+  const lineHeight = 6
+  const paraGap = 3.5
+  const padLeft = 6
 
   // Mesure totale pour le trait latéral
   let totalH = 0
@@ -275,51 +275,16 @@ function drawDescription(doc: jsPDF, x: number, y: number, w: number) {
 }
 
 function drawLegend(doc: jsPDF, x: number, y: number, w: number, h: number) {
-  // Fond + bordure
-  doc.setFillColor(255, 255, 255)
-  setDraw(doc, C_BORDER)
-  doc.setLineWidth(0.8)
-  doc.roundedRect(x, y, w, h, 4, 4, 'FD')
-
-  // Titre "Légende"
-  doc.setFont('times', 'bold')
-  doc.setFontSize(18)
+  // Pas de fond, pas de bordure, pas de titre.
+  // Juste un seul item "Ancêtre royal" en italique, fondu sur le parchment.
+  const cy = y + h / 2
+  const iconCenterX = x + 8
+  const textX = x + 20
+  drawRoyalCrownBadge(doc, iconCenterX, cy, 6)
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(14) // +2pts par rapport à avant
   setText(doc, C_INK)
-  doc.text('Légende', x + 10, y + 13)
-
-  // Trait doré sous le titre
-  setDraw(doc, C_GOLD)
-  doc.setLineWidth(0.6)
-  doc.line(x + 10, y + 16, x + 48, y + 16)
-
-  // ─── Items (compact, deux lignes, aligné centre vertical)
-  const iconColX = x + 10
-  const iconCenterX = iconColX + 7
-  const textColX = x + 26
-  const lineHeight = 14
-  let rowY = y + 25
-
-  // 1) Couronne royale
-  drawRoyalCrownBadge(doc, iconCenterX, rowY + 3, 5)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(12)
-  setText(doc, C_INK)
-  doc.text('Ancêtre royal', textColX, rowY + 3, { baseline: 'middle' })
-  rowY += lineHeight
-
-  // 2) Récit familial disponible (icône scroll vert)
-  doc.setFillColor(30, 58, 47)  // heritage-green
-  doc.circle(iconCenterX, rowY + 3, 4, 'F')
-  // Petite icône scroll blanche stylisée à l'intérieur (3 lignes)
-  doc.setDrawColor(255, 255, 255)
-  doc.setLineWidth(0.5)
-  doc.line(iconCenterX - 1.5, rowY + 1.8, iconCenterX + 1.5, rowY + 1.8)
-  doc.line(iconCenterX - 1.5, rowY + 3, iconCenterX + 1.5, rowY + 3)
-  doc.line(iconCenterX - 1.5, rowY + 4.2, iconCenterX + 1.5, rowY + 4.2)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(12)
-  setText(doc, C_INK)
-  doc.text('Récit familial disponible', textColX, rowY + 3, { baseline: 'middle' })
+  doc.text('Ancêtre royal', textX, cy, { baseline: 'middle' })
 }
 
 export async function downloadFamilyTreePdf(
@@ -392,17 +357,17 @@ export async function downloadFamilyTreePdf(
   })
   doc.text(`Édition du ${today}`, PAGE_W / 2, 126, { align: 'center' })
 
-  // ─── Encart de description (top-right, discret, sans fond)
-  const descW = 220
-  const descX = PAGE_W - SIDE_MARGIN - descW
+  // ─── Encart de description (top-LEFT, discret, sans fond)
+  const descW = 240
+  const descX = SIDE_MARGIN
   const descY = 40
   drawDescription(doc, descX, descY, descW)
 
-  // ─── Légende des pictogrammes (bottom-right, compacte)
-  const legendW = 175
-  const legendH = 55
+  // ─── Légende ultra-compacte (bottom-right, juste "Ancêtre royal")
+  const legendW = 100
+  const legendH = 20
   const legendX = PAGE_W - SIDE_MARGIN - legendW
-  const legendY = PAGE_H - 30 - legendH  // 30mm de marge depuis le bas
+  const legendY = PAGE_H - 30 - legendH
   drawLegend(doc, legendX, legendY, legendW, legendH)
 
   // ─── Calcul de la zone arbre et de l'échelle
@@ -500,60 +465,13 @@ export async function downloadFamilyTreePdf(
     doc.setLineWidth(Math.max(0.3, 0.5 * scale))
     doc.roundedRect(avatarX, avatarY, avatarSize, avatarSize, avatarSize * 0.12, avatarSize * 0.12, 'S')
 
-    // ─ Tailles de police (significativement plus grosses qu'avant)
-    const titleSize = Math.max(6, nh * 0.10)
-    const firstNameSize = Math.max(11, nh * 0.20)
-    const lastNameSize = Math.max(8, nh * 0.13)
-    const dateSize = Math.max(6, nh * 0.10)
+    // ─ Tailles de police (+2pts par rapport à avant)
+    const titleSize = Math.max(7, nh * 0.10)
+    const firstNameSize = Math.max(13, nh * 0.20) + 2
+    const lastNameSize = Math.max(10, nh * 0.13) + 2
+    const dateSize = Math.max(7, nh * 0.10)
 
-    // ─ Bloc texte à droite, aligné à gauche
-    let cursorY = avatarY  // top du bloc texte
-
-    // Bulle du titre royal (pill alignée à gauche)
-    if (person.is_royal && person.royal_title) {
-      const padX = titleSize * 0.45
-      const padY = titleSize * 0.18
-      const labelText = person.royal_title.toUpperCase()
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(titleSize)
-      const labelW = Math.min(doc.getTextWidth(labelText), textW - 2 * padX)
-      const pillW = labelW + 2 * padX
-      const pillH = titleSize * 0.42 + 2 * padY
-      setFill(doc, C_GOLD_LIGHT)
-      setDraw(doc, C_GOLD)
-      doc.setLineWidth(Math.max(0.15, 0.2 * scale))
-      const pillR = pillH / 2
-      doc.roundedRect(textX, cursorY, pillW, pillH, pillR, pillR, 'FD')
-      setText(doc, C_GOLD_DARK)
-      doc.text(
-        labelText,
-        textX + padX,
-        cursorY + pillH / 2,
-        { maxWidth: labelW, baseline: 'middle' },
-      )
-      cursorY += pillH + nh * 0.04
-    }
-
-    // Prénom — gros et gras serif, peut wrapper sur 2 lignes
-    doc.setFont('times', 'bold')
-    doc.setFontSize(firstNameSize)
-    setText(doc, C_INK)
-    const fnLines = (doc.splitTextToSize(person.first_name, textW) as string[]).slice(0, 2)
-    const fnLineH = firstNameSize * 0.42
-    for (const line of fnLines) {
-      doc.text(line, textX, cursorY, { baseline: 'top' })
-      cursorY += fnLineH
-    }
-    cursorY += nh * 0.02
-
-    // Nom de famille
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(lastNameSize)
-    setText(doc, C_BROWN)
-    doc.text(person.last_name, textX, cursorY, { baseline: 'top', maxWidth: textW })
-    cursorY += lastNameSize * 0.42 + nh * 0.02
-
-    // Dates de vie
+    // ─ Dates de vie (calculé d'abord pour estimer la hauteur du bloc texte)
     let lifeText = ''
     if (person.birth_date && person.death_date) {
       lifeText = `${formatDateFR(person.birth_date)} / ${formatDateFR(person.death_date)}`
@@ -562,6 +480,94 @@ export async function downloadFamilyTreePdf(
     } else if (person.death_date) {
       lifeText = `† ${formatDateFR(person.death_date)}`
     }
+
+    // ─ Pré-calcul de la hauteur totale du bloc texte (pour centrage vertical
+    //    quand pas de titre royal, afin que le nom soit bien au milieu)
+    doc.setFont('times', 'bold')
+    doc.setFontSize(firstNameSize)
+    const fnLines = (doc.splitTextToSize(person.first_name, textW) as string[]).slice(0, 2)
+    const fnLineH = firstNameSize * 0.42
+    const fnBlockH = fnLines.length * fnLineH
+
+    let pillH = 0
+    let pillW = 0
+    let labelText = ''
+    let labelLines: string[] = []
+    let pillTextLineH = 0
+    if (person.is_royal && person.royal_title) {
+      labelText = person.royal_title.toUpperCase()
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(titleSize)
+      const padX = titleSize * 0.45
+      const padY = titleSize * 0.18
+      // Pill jusqu'à la largeur entière du bloc texte (pas de wrap intempestif)
+      const maxLabelW = textW - 2 * padX
+      labelLines = doc.splitTextToSize(labelText, maxLabelW) as string[]
+      // Largeur réelle utilisée : prend la plus longue ligne
+      const usedW = Math.min(
+        Math.max(...labelLines.map(l => doc.getTextWidth(l))),
+        maxLabelW,
+      )
+      pillW = usedW + 2 * padX
+      pillTextLineH = titleSize * 0.42
+      pillH = labelLines.length * pillTextLineH + 2 * padY
+    }
+
+    const lastNameH = lastNameSize * 0.42
+    const dateH = lifeText ? dateSize * 0.42 : 0
+    const interGap = nh * 0.025
+    const blockH =
+      (pillH > 0 ? pillH + nh * 0.04 : 0) +
+      fnBlockH +
+      interGap +
+      lastNameH +
+      (dateH > 0 ? interGap + dateH : 0)
+
+    // Centrage vertical : si pas de titre royal, on centre le bloc sur l'avatar.
+    // Avec titre royal, on aligne en haut (comme avant).
+    const blockTop = (person.is_royal && person.royal_title)
+      ? avatarY
+      : avatarY + (avatarSize - blockH) / 2
+
+    // ─ Rendu : bulle puis prénom, nom, date
+    let cursorY = blockTop
+
+    if (person.is_royal && person.royal_title) {
+      setFill(doc, C_GOLD_LIGHT)
+      setDraw(doc, C_GOLD)
+      doc.setLineWidth(Math.max(0.15, 0.2 * scale))
+      const pillR = pillH / 2
+      doc.roundedRect(textX, cursorY, pillW, pillH, pillR, pillR, 'FD')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(titleSize)
+      setText(doc, C_GOLD_DARK)
+      const padX = titleSize * 0.45
+      const padY = titleSize * 0.18
+      let lineCursorY = cursorY + padY
+      for (const line of labelLines) {
+        doc.text(line, textX + padX, lineCursorY, { baseline: 'top' })
+        lineCursorY += pillTextLineH
+      }
+      cursorY += pillH + nh * 0.04
+    }
+
+    // Prénom
+    doc.setFont('times', 'bold')
+    doc.setFontSize(firstNameSize)
+    setText(doc, C_INK)
+    for (const line of fnLines) {
+      doc.text(line, textX, cursorY, { baseline: 'top' })
+      cursorY += fnLineH
+    }
+    cursorY += interGap
+
+    // Nom de famille
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(lastNameSize)
+    setText(doc, C_BROWN)
+    doc.text(person.last_name, textX, cursorY, { baseline: 'top', maxWidth: textW })
+    cursorY += lastNameH + interGap
+
     if (lifeText) {
       doc.setFontSize(dateSize)
       setText(doc, C_LIGHT_BROWN)

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { Trash2, X, Search, Crown } from 'lucide-react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { Trash2, X, Search, Crown, Download, UserPlus, Loader2 } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import FamilyTree from '@/components/tree/FamilyTree'
 import PersonPreviewPanel from '@/components/PersonPreviewPanel'
@@ -12,6 +13,9 @@ import { createClient } from '@/lib/supabase'
 import { findFamilyFocal, cn } from '@/lib/utils'
 
 export default function HomePage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [persons, setPersons] = useState<Person[]>([])
   const [relationships, setRelationships] = useState<Relationship[]>([])
   const [souvenirs, setSouvenirs] = useState<Souvenir[]>([])
@@ -27,6 +31,36 @@ export default function HomePage() {
   const [royalFilter, setRoyalFilter] = useState(false)
   const [souvenirFilter, setSouvenirFilter] = useState(false)
   const [centerTargetId, setCenterTargetId] = useState<string | null>(null)
+
+  // Téléchargement PDF (logique inlined depuis l'ancien PdfButton)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  async function downloadPdf() {
+    if (downloadingPdf) return
+    setDownloadingPdf(true)
+    try {
+      const supabase = createClient()
+      const [{ data: ps }, { data: rels }] = await Promise.all([
+        supabase.from('persons').select('*').order('display_order', { ascending: true }),
+        supabase.from('relationships').select('*'),
+      ])
+      const allPersons = ps || []
+      const allRels = rels || []
+      const fId = findFamilyFocal(allPersons, allRels, 'youm')
+      const { downloadFamilyTreePdf } = await import('@/lib/generatePdf')
+      await downloadFamilyTreePdf(allPersons, allRels, fId, 'Youm')
+    } catch (err) {
+      console.error('Erreur PDF :', err)
+      alert("Erreur lors de la génération du PDF.")
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
+  function openAddDrawer() {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('ajouter', '1')
+    router.push(`${pathname}?${params.toString()}`)
+  }
 
   useEffect(() => {
     async function loadData() {
@@ -140,9 +174,11 @@ export default function HomePage() {
       <Header />
 
       <div className="flex-1 relative min-h-0">
-        {/* Champ de recherche flottant, discret, fondu dans le parchment du tree */}
-        <div className="absolute top-3 left-3 z-30 w-44 sm:w-56">
-          <div className="relative">
+        {/* Barre d'actions flottante en haut — recherche + ajouter + télécharger
+            Tous discrets, transparents au repos, posés sur le parchment du tree */}
+        <div className="absolute top-3 left-3 z-30 flex items-center gap-2 flex-wrap">
+          {/* 1) Recherche */}
+          <div className="relative w-44 sm:w-56">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-heritage-brown opacity-50 pointer-events-none" />
             <input
               type="text"
@@ -202,6 +238,29 @@ export default function HomePage() {
               </div>
             )}
           </div>
+
+          {/* 2) Ajouter un membre de la famille */}
+          <button
+            onClick={openAddDrawer}
+            className="inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 text-xs rounded-full border border-transparent text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors"
+            title="Ajouter un membre de la famille"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span className="font-semibold">Ajouter un membre de la famille</span>
+          </button>
+
+          {/* 3) Télécharger l'arbre généalogique */}
+          <button
+            onClick={downloadPdf}
+            disabled={downloadingPdf}
+            className="inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 text-xs rounded-full border border-transparent text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors disabled:opacity-50"
+            title="Télécharger l'arbre généalogique en PDF"
+          >
+            {downloadingPdf
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Download className="w-3.5 h-3.5" />}
+            <span className="font-semibold">Télécharger l&apos;arbre généalogique</span>
+          </button>
         </div>
         {loading ? (
           <div className="w-full h-full flex items-center justify-center">

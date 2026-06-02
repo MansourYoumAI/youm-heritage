@@ -1,12 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { LogOut, Plus, Crown, ScrollText, TreeDeciduous } from 'lucide-react'
-import PdfButton from '@/components/PdfButton'
+import { usePathname } from 'next/navigation'
+import { Crown, ScrollText, TreeDeciduous } from 'lucide-react'
 import PersonDrawer from '@/components/PersonDrawer'
 import { cn } from '@/lib/utils'
 
+// `showAddButton` est conservé pour compatibilité mais n'est plus utilisé
+// (les actions add/PDF/logout sont déplacées en flottant dans la vue arbre).
 interface HeaderProps {
   showAddButton?: boolean
 }
@@ -17,22 +18,8 @@ const KINGDOMS: { href: string; label: string }[] = [
   { href: '/fouta-toro', label: 'Fouta-Toro' },
 ]
 
-export default function Header({ showAddButton = true }: HeaderProps) {
-  const router = useRouter()
+export default function Header({}: HeaderProps) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-
-  async function handleLogout() {
-    await fetch('/api/auth', { method: 'DELETE' })
-    router.push('/connexion')
-    router.refresh()
-  }
-
-  function openAddDrawer() {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('ajouter', '1')
-    router.push(`${pathname}?${params.toString()}`)
-  }
 
   const isHome = pathname === '/'
   const isRoyals = pathname === '/souvenirs'
@@ -105,27 +92,8 @@ export default function Header({ showAddButton = true }: HeaderProps) {
             </div>
           </nav>
 
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            {showAddButton && (
-              <button
-                onClick={openAddDrawer}
-                title="Ajouter un membre"
-                aria-label="Ajouter un membre"
-                className="p-2 rounded-lg text-heritage-brown hover:text-heritage-green hover:bg-parchment-200 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            )}
-            <PdfButton />
-            <button
-              onClick={handleLogout}
-              title="Déconnexion"
-              aria-label="Déconnexion"
-              className="p-2 rounded-lg text-heritage-brown hover:text-terracotta-500 hover:bg-terracotta-50 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
+          {/* Boutons supprimés : + ajouter, télécharger PDF, déconnexion
+              (déplacés en flottant à côté de la recherche dans la vue arbre) */}
         </div>
 
         {/* Navigation mobile sous le header — 2 grands liens, royaumes en petite ligne */}

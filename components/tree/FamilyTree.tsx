@@ -5,8 +5,7 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { computeLayout, NODE_W, NODE_H } from '@/lib/treeLayout'
 import PersonNode from './PersonNode'
-import { ZoomIn, ZoomOut, Maximize2, LocateFixed, HelpCircle, X, Crown, ScrollText } from 'lucide-react'
-// Note : Crown et ScrollText utilisés dans la légende, LocateFixed sur le bouton Recentrer
+import { HelpCircle, X, Crown, ScrollText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface FamilyTreeProps {
@@ -205,49 +204,17 @@ export default function FamilyTree({
 
   return (
     <div className="relative w-full h-full bg-parchment-100 overflow-hidden rounded-xl" ref={wrapperRef}>
-      <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-        <button
-          onClick={() => transformRef.current?.zoomIn()}
-          className="w-10 h-10 bg-white rounded-lg shadow-warm-md border border-parchment-400 flex items-center justify-center text-heritage-ink hover:bg-parchment-200 transition-colors"
-          title="Agrandir"
-        >
-          <ZoomIn className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => transformRef.current?.zoomOut()}
-          className="w-10 h-10 bg-white rounded-lg shadow-warm-md border border-parchment-400 flex items-center justify-center text-heritage-ink hover:bg-parchment-200 transition-colors"
-          title="Réduire"
-        >
-          <ZoomOut className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => centerOnFocal(true)}
-          className="group relative w-10 h-10 bg-white rounded-lg shadow-warm-md border-2 border-royal-gold/40 flex items-center justify-center text-royal-gold-dark hover:bg-royal-gold-light transition-colors"
-          title="Recentrer sur moi"
-        >
-          <LocateFixed className="w-5 h-5" />
-          {/* Label flottant au survol */}
-          <span className="absolute right-full mr-2 px-2 py-1 rounded-md bg-heritage-ink text-white text-[11px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-warm-md">
-            Recentrer
-          </span>
-        </button>
-        <button
-          onClick={() => transformRef.current?.resetTransform()}
-          className="w-10 h-10 bg-white rounded-lg shadow-warm-md border border-parchment-400 flex items-center justify-center text-heritage-ink hover:bg-parchment-200 transition-colors"
-          title="Réinitialiser le zoom"
-        >
-          <Maximize2 className="w-5 h-5" />
-        </button>
+      <div className="absolute top-4 right-4 z-20">
         <button
           onClick={() => {
             setLegendOpen(o => !o)
             setLegendButtonPulse(false)
           }}
           className={cn(
-            'relative w-10 h-10 rounded-lg shadow-warm-md border flex items-center justify-center transition-colors',
+            'relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors',
             legendOpen
-              ? 'bg-heritage-ink text-white border-heritage-ink'
-              : 'bg-white text-heritage-ink border-parchment-400 hover:bg-parchment-200',
+              ? 'bg-heritage-ink text-white'
+              : 'bg-parchment-50 border border-parchment-400 text-heritage-ink hover:bg-parchment-200 shadow-warm-sm',
           )}
           title="Légende"
         >
@@ -255,11 +222,11 @@ export default function FamilyTree({
           {legendButtonPulse && !legendOpen && (
             <>
               <span
-                className="absolute inset-0 rounded-lg pointer-events-none ring-4 ring-royal-gold"
+                className="absolute inset-0 rounded-full pointer-events-none ring-4 ring-royal-gold"
                 style={{ animation: 'youm-pulse-ring 1.6s ease-out 2' }}
               />
               <span
-                className="absolute -inset-2 rounded-lg pointer-events-none"
+                className="absolute -inset-2 rounded-full pointer-events-none"
                 style={{
                   boxShadow: '0 0 24px 4px rgba(196, 146, 42, 0.55)',
                   animation: 'youm-pulse-glow 1.6s ease-out 2',
@@ -267,17 +234,15 @@ export default function FamilyTree({
               />
             </>
           )}
-          <HelpCircle className="w-5 h-5 relative z-10" />
+          <HelpCircle className="w-3.5 h-3.5 relative z-10" />
+          <span className="relative z-10">Légende</span>
         </button>
       </div>
 
       {/* Panneau Légende — items cliquables = boutons de filtre */}
       {legendOpen && (
-        <div className="absolute top-4 right-16 z-30 w-72 bg-white rounded-2xl shadow-warm-xl border-2 border-parchment-400 p-4 animate-fade-in">
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-parchment-200">
-            <h3 className="font-display font-bold text-sm text-heritage-ink">
-              Légende
-            </h3>
+        <div className="absolute top-14 right-4 z-30 w-72 bg-white rounded-2xl shadow-warm-xl border-2 border-parchment-400 p-3 animate-fade-in">
+          <div className="flex justify-end mb-1">
             <button
               onClick={() => setLegendOpen(false)}
               className="p-1 rounded-md text-heritage-brown hover:bg-parchment-100"
@@ -286,9 +251,6 @@ export default function FamilyTree({
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          <p className="text-[10px] text-heritage-brown italic mb-2.5">
-            Cliquez pour filtrer l&apos;arbre.
-          </p>
           <ul className="space-y-2">
             <li>
               <button
