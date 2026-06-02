@@ -159,6 +159,97 @@ function drawRoyalCrownBadge(doc: jsPDF, cx: number, cy: number, r: number) {
   doc.lines(rubyRel, rubyTop[0], rubyTop[1], [1, 1], 'F', true)
 }
 
+/**
+ * Encadré "Légende" : explique les pictogrammes utilisés dans l'arbre
+ * (couronne royale, ligne de couple, filiation pointillée, lien cousin).
+ * Position et dimensions configurables (placé au top-right par défaut).
+ */
+function drawLegend(doc: jsPDF, x: number, y: number, w: number, h: number) {
+  // Fond + bordure
+  doc.setFillColor(255, 255, 255)
+  setDraw(doc, C_BORDER)
+  doc.setLineWidth(0.5)
+  doc.roundedRect(x, y, w, h, 3, 3, 'FD')
+
+  // Titre "Légende"
+  doc.setFont('times', 'bold')
+  doc.setFontSize(14)
+  setText(doc, C_INK)
+  doc.text('Légende', x + 8, y + 11)
+
+  // Trait doré sous le titre
+  setDraw(doc, C_GOLD)
+  doc.setLineWidth(0.4)
+  doc.line(x + 8, y + 13.5, x + 30, y + 13.5)
+
+  // ─── Items
+  const iconColX = x + 8
+  const iconCenterX = iconColX + 7  // centre des icônes (col de 14mm)
+  const textColX = x + 22
+  const textW = w - 30
+  const lineHeight = 12
+  let rowY = y + 22
+
+  // 1) Couronne royale
+  drawRoyalCrownBadge(doc, iconCenterX, rowY + 3, 4)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  setText(doc, C_INK)
+  doc.text('Ancêtre royal', textColX, rowY + 1, { baseline: 'top' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  setText(doc, C_BROWN)
+  doc.text('Titre Damel, Teigne, Almany, Linguère…', textColX, rowY + 5.5, { baseline: 'top', maxWidth: textW })
+  rowY += lineHeight + 2
+
+  // 2) Couple (ligne dorée + point)
+  setDraw(doc, C_LINE_COUPLE)
+  doc.setLineWidth(1.4)
+  doc.line(iconColX, rowY + 3, iconColX + 14, rowY + 3)
+  setFill(doc, C_LINE_COUPLE)
+  doc.circle(iconColX + 7, rowY + 3, 1.2, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  setText(doc, C_INK)
+  doc.text('Couple', textColX, rowY + 1, { baseline: 'top' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  setText(doc, C_BROWN)
+  doc.text('Mariage ou union', textColX, rowY + 5.5, { baseline: 'top', maxWidth: textW })
+  rowY += lineHeight
+
+  // 3) Filiation (vertical pointillé)
+  setDraw(doc, C_LINE_PARENT)
+  doc.setLineWidth(1)
+  doc.setLineDashPattern([1.5, 1], 0)
+  doc.line(iconColX + 7, rowY, iconColX + 7, rowY + 7)
+  doc.setLineDashPattern([], 0)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  setText(doc, C_INK)
+  doc.text('Filiation', textColX, rowY + 1, { baseline: 'top' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  setText(doc, C_BROWN)
+  doc.text('Lien parent-enfant', textColX, rowY + 5.5, { baseline: 'top', maxWidth: textW })
+  rowY += lineHeight
+
+  // 4) Cousin (horizontal pointillé terracotta)
+  doc.setDrawColor(160, 82, 45) // terracotta-ish #A0522D
+  doc.setLineWidth(1)
+  doc.setLineDashPattern([1.2, 1.6], 0)
+  doc.line(iconColX, rowY + 3, iconColX + 14, rowY + 3)
+  doc.setLineDashPattern([], 0)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  setText(doc, C_INK)
+  doc.text('Cousin·s', textColX, rowY + 1, { baseline: 'top' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  setText(doc, C_BROWN)
+  doc.text('Lien entre cousins de même génération', textColX, rowY + 5.5, { baseline: 'top', maxWidth: textW })
+}
+
 export async function downloadFamilyTreePdf(
   persons: Person[],
   relationships: Relationship[],
@@ -224,6 +315,13 @@ export async function downloadFamilyTreePdf(
     day: 'numeric', month: 'long', year: 'numeric',
   })
   doc.text(`Édition du ${today}`, PAGE_W / 2, 126, { align: 'center' })
+
+  // ─── Légende des pictogrammes (top-right, en dehors de l'arbre)
+  const legendW = 130
+  const legendH = 72
+  const legendX = PAGE_W - SIDE_MARGIN - legendW
+  const legendY = TOP_MARGIN - legendH - 5
+  drawLegend(doc, legendX, legendY, legendW, legendH)
 
   // ─── Calcul de la zone arbre et de l'échelle
   const treeAreaW = PAGE_W - 2 * SIDE_MARGIN
