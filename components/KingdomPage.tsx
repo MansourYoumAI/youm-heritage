@@ -631,8 +631,15 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
           </h2>
           <p className="text-sm text-heritage-brown font-medium">
             Enregistre une anecdote ou un récit sur ce royaume, il s&apos;ajoutera ici.
+            Les récits attachés aux souverains du royaume apparaissent aussi.
+            Marque tes favoris avec l&apos;étoile jaune ⭐.
           </p>
-          <SouvenirsSection kingdomSlug={slug} />
+          <SouvenirsSection
+            kingdomContext={{
+              slug,
+              personIds: rulers.map(r => r.id),
+            }}
+          />
         </section>
       </main>
 

@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Plus, X, Camera, Mic, Loader2, Trash2, ScrollText, Pencil } from 'lucide-react'
+import { Plus, X, Camera, Mic, Loader2, Trash2, ScrollText, Pencil, Star } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useAudioRecorder, MAX_RECORDING_SECONDS } from '@/hooks/useAudioRecorder'
 import type { Souvenir } from '@/lib/types'
-import { parseYearFromDate, formatDuration } from '@/lib/utils'
+import { parseYearFromDate, formatDuration, cn } from '@/lib/utils'
 import { resizeImage } from '@/lib/imageResize'
 import Lightbox from './Lightbox'
 
@@ -14,6 +14,30 @@ interface SouvenirsSectionProps {
   /** Cible : un person_id OU un kingdom_slug (exclusifs) */
   personId?: string
   kingdomSlug?: string
+  /** Mode "page royaume" : inclut les récits attachés au royaume ET ceux des
+   *  personnes listées (souverains du royaume). Active aussi les étoiles
+   *  jaunes (favoris par royaume) et le tri "favoris d'abord, puis date asc". */
+  kingdomContext?: {
+    slug: string
+    personIds: string[]
+  }
+}
+
+// Tri : si on est sur une page royaume, mettre les favoris en premier,
+// puis chronologique ascendant (du plus ancien au plus récent).
+function sortForKingdom(souvenirs: Souvenir[], slug: string): Souvenir[] {
+  return [...souvenirs].sort((a, b) => {
+    const aFav = (a.kingdom_favorites || []).includes(slug)
+    const bFav = (b.kingdom_favorites || []).includes(slug)
+    if (aFav && !bFav) return -1
+    if (!aFav && bFav) return 1
+    const yA = parseYearFromDate(a.souvenir_date)
+    const yB = parseYearFromDate(b.souvenir_date)
+    if (yA !== null && yB !== null) return yA - yB
+    if (yA !== null) return -1
+    if (yB !== null) return 1
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
 }
 
 // Tri chronologique : du plus ancien (en haut) au plus récent (en bas)
@@ -28,29 +52,49 @@ function sortByDateAsc(souvenirs: Souvenir[]): Souvenir[] {
   })
 }
 
-export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSectionProps) {
+export default function SouvenirsSection({ personId, kingdomSlug, kingdomContext }: SouvenirsSectionProps) {
   const [souvenirs, setSouvenirs] = useState<Souvenir[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Souvenir | null>(null)
 
+  // Stringifier les personIds pour la clé du useEffect (sinon re-render infini)
+  const personIdsKey = kingdomContext?.personIds.join(',') || ''
+  const contextSlug = kingdomContext?.slug
+
   useEffect(() => {
     loadSouvenirs()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personId, kingdomSlug])
+  }, [personId, kingdomSlug, contextSlug, personIdsKey])
 
   async function loadSouvenirs() {
     const supabase = createClient()
     let query = supabase.from('souvenirs').select('*')
-    if (personId) query = query.eq('person_id', personId)
-    else if (kingdomSlug) query = query.eq('kingdom_slug', kingdomSlug)
-    else {
+    if (kingdomContext) {
+      // Récits attachés au royaume OU à un des souverains listés
+      const personIds = kingdomContext.personIds
+      if (personIds.length > 0) {
+        // Format Supabase pour OR + IN avec UUID (sans quotes autour des UUID)
+        query = query.or(`kingdom_slug.eq.${kingdomContext.slug},person_id.in.(${personIds.join(',')})`)
+      } else {
+        query = query.eq('kingdom_slug', kingdomContext.slug)
+      }
+    } else if (personId) {
+      query = query.eq('person_id', personId)
+    } else if (kingdomSlug) {
+      query = query.eq('kingdom_slug', kingdomSlug)
+    } else {
       setSouvenirs([])
       setLoading(false)
       return
     }
     const { data } = await query
-    setSouvenirs(sortByDateAsc(data || []))
+    const list = (data || []) as Souvenir[]
+    if (kingdomContext) {
+      setSouvenirs(sortForKingdom(list, kingdomContext.slug))
+    } else {
+      setSouvenirs(sortByDateAsc(list))
+    }
     setLoading(false)
   }
 
@@ -59,6 +103,25 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
     const supabase = createClient()
     await supabase.from('souvenirs').delete().eq('id', id)
     setSouvenirs(prev => prev.filter(s => s.id !== id))
+  }
+
+  async function toggleFavorite(souvenir: Souvenir) {
+    if (!kingdomContext) return
+    const slug = kingdomContext.slug
+    const current = souvenir.kingdom_favorites || []
+    const isFav = current.includes(slug)
+    const next = isFav ? current.filter(s => s !== slug) : [...current, slug]
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('souvenirs')
+      .update({ kingdom_favorites: next })
+      .eq('id', souvenir.id)
+    if (error) return
+    // Mise à jour locale + re-tri
+    setSouvenirs(prev => sortForKingdom(
+      prev.map(s => s.id === souvenir.id ? { ...s, kingdom_favorites: next } : s),
+      slug,
+    ))
   }
 
   const isFormOpen = showForm || editing !== null
@@ -92,7 +155,8 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
       {isFormOpen && (
         <SouvenirForm
           personId={personId}
-          kingdomSlug={kingdomSlug}
+          // En mode royaume, les nouveaux récits sont attachés au royaume
+          kingdomSlug={kingdomSlug || kingdomContext?.slug}
           existing={editing}
           onSaved={() => {
             closeForm()
@@ -117,6 +181,8 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
               souvenirs={souvenirs}
               onDelete={deleteSouvenir}
               onEdit={setEditing}
+              kingdomSlugForFavorite={kingdomContext?.slug}
+              onToggleFavorite={kingdomContext ? toggleFavorite : undefined}
             />
           )}
         </>
@@ -126,24 +192,32 @@ export default function SouvenirsSection({ personId, kingdomSlug }: SouvenirsSec
 }
 
 function Timeline({
-  souvenirs, onDelete, onEdit,
+  souvenirs, onDelete, onEdit, kingdomSlugForFavorite, onToggleFavorite,
 }: {
   souvenirs: Souvenir[]
   onDelete: (id: string) => void
   onEdit: (s: Souvenir) => void
+  kingdomSlugForFavorite?: string
+  onToggleFavorite?: (s: Souvenir) => void
 }) {
   return (
     <div>
-      {souvenirs.map((s, i) => (
-        <div key={s.id}>
-          <TimelineItem
-            souvenir={s}
-            onDelete={() => onDelete(s.id)}
-            onEdit={() => onEdit(s)}
-          />
-          {i < souvenirs.length - 1 && <DashedConnector />}
-        </div>
-      ))}
+      {souvenirs.map((s, i) => {
+        const isFav = !!kingdomSlugForFavorite
+          && (s.kingdom_favorites || []).includes(kingdomSlugForFavorite)
+        return (
+          <div key={s.id}>
+            <TimelineItem
+              souvenir={s}
+              onDelete={() => onDelete(s.id)}
+              onEdit={() => onEdit(s)}
+              isFavorite={isFav}
+              onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(s) : undefined}
+            />
+            {i < souvenirs.length - 1 && <DashedConnector />}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -165,17 +239,22 @@ function DashedConnector() {
 }
 
 function TimelineItem({
-  souvenir, onDelete, onEdit,
+  souvenir, onDelete, onEdit, isFavorite, onToggleFavorite,
 }: {
   souvenir: Souvenir
   onDelete: () => void
   onEdit: () => void
+  isFavorite?: boolean
+  onToggleFavorite?: () => void
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const dateLabel = souvenir.souvenir_date || 'Sans date'
 
   return (
-    <div className="bg-white rounded-2xl border border-parchment-400 shadow-warm-sm p-5">
+    <div className={cn(
+      'bg-white rounded-2xl border shadow-warm-sm p-5 transition-colors',
+      isFavorite ? 'border-yellow-400 border-2 ring-2 ring-yellow-200' : 'border-parchment-400',
+    )}>
       {/* En-tête : pastille + année + pastille */}
       <div className="flex items-center justify-center gap-2.5 mb-4">
         <div className="w-2 h-2 rounded-full bg-navy-500" />
@@ -188,6 +267,25 @@ function TimelineItem({
       <div className="flex items-start justify-between gap-2 mb-2">
         <h3 className="font-display font-bold text-heritage-ink text-base">{souvenir.title}</h3>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Étoile favori — visible uniquement en mode page royaume */}
+          {onToggleFavorite && (
+            <button
+              onClick={onToggleFavorite}
+              title={isFavorite ? 'Retirer des favoris du royaume' : 'Marquer comme favori du royaume'}
+              className={cn(
+                'p-1.5 rounded transition-colors',
+                isFavorite
+                  ? 'text-yellow-500 hover:bg-yellow-50'
+                  : 'text-parchment-500 hover:text-yellow-500 hover:bg-yellow-50',
+              )}
+            >
+              <Star
+                className="w-4 h-4"
+                fill={isFavorite ? 'currentColor' : 'none'}
+                strokeWidth={2}
+              />
+            </button>
+          )}
           <button onClick={onEdit} title="Modifier"
             className="p-1.5 rounded text-parchment-500 hover:text-heritage-green hover:bg-heritage-green/10">
             <Pencil className="w-4 h-4" />

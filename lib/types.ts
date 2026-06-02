@@ -126,6 +126,8 @@ export interface Souvenir {
   person_id: string | null
   kingdom_slug: string | null
   source: string | null
+  /** Liste des slugs de royaumes pour lesquels ce récit a été marqué favori. */
+  kingdom_favorites: string[] | null
   title: string
   detail: string | null
   souvenir_date: string | null
