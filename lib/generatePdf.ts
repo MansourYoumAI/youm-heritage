@@ -10,7 +10,7 @@ const PAGE_H = 841
 // Marges
 const TOP_MARGIN = 145
 const SIDE_MARGIN = 30
-const BOTTOM_MARGIN = 80
+const BOTTOM_MARGIN = 110
 
 // Couleurs (RGB) — typées explicitement pour éviter les spreads sur tuples
 // qui posent problème selon les versions de jsPDF / TypeScript.
@@ -228,6 +228,52 @@ function drawRoyalCrownBadge(doc: jsPDF, cx: number, cy: number, r: number) {
  * (couronne royale, ligne de couple, filiation pointillée, lien cousin).
  * Position et dimensions configurables (placé au top-right par défaut).
  */
+/**
+ * Encart de mise en contexte (3 paragraphes), discret, sans fond.
+ * Trait doré vertical à gauche pour l'élégance. Italique sépia.
+ */
+function drawDescription(doc: jsPDF, x: number, y: number, w: number) {
+  const paragraphs = [
+    "Cet arbre retrace plusieurs siècles de filiations, depuis les royaumes pré-coloniaux du Cayor, du Baol et du Fouta-Toro jusqu'à aujourd'hui.",
+    "Les liens présentés s'appuient sur des sources vérifiées : archives historiques et tradition orale avérée.",
+    "Cette mémoire est vivante et continue d'être enrichie au fil des découvertes.",
+  ]
+
+  doc.setFont('times', 'italic')
+  const fontSize = 11
+  doc.setFontSize(fontSize)
+  setText(doc, C_BROWN)
+
+  const lineHeight = 4.8
+  const paraGap = 3
+  const padLeft = 5
+
+  // Mesure totale pour le trait latéral
+  let totalH = 0
+  const wrapped: string[][] = []
+  for (const p of paragraphs) {
+    const lines = doc.splitTextToSize(p, w - padLeft) as string[]
+    wrapped.push(lines)
+    totalH += lines.length * lineHeight + paraGap
+  }
+  totalH -= paraGap // pas de gap après le dernier paragraphe
+
+  // Trait doré vertical à gauche
+  setDraw(doc, C_GOLD)
+  doc.setLineWidth(0.4)
+  doc.line(x, y, x, y + totalH)
+
+  // Rendu des paragraphes
+  let cursorY = y
+  for (const lines of wrapped) {
+    for (const line of lines) {
+      doc.text(line, x + padLeft, cursorY, { baseline: 'top' })
+      cursorY += lineHeight
+    }
+    cursorY += paraGap
+  }
+}
+
 function drawLegend(doc: jsPDF, x: number, y: number, w: number, h: number) {
   // Fond + bordure
   doc.setFillColor(255, 255, 255)
@@ -237,81 +283,43 @@ function drawLegend(doc: jsPDF, x: number, y: number, w: number, h: number) {
 
   // Titre "Légende"
   doc.setFont('times', 'bold')
-  doc.setFontSize(20)
+  doc.setFontSize(18)
   setText(doc, C_INK)
-  doc.text('Légende', x + 12, y + 16)
+  doc.text('Légende', x + 10, y + 13)
 
   // Trait doré sous le titre
   setDraw(doc, C_GOLD)
   doc.setLineWidth(0.6)
-  doc.line(x + 12, y + 20, x + 60, y + 20)
+  doc.line(x + 10, y + 16, x + 48, y + 16)
 
-  // ─── Items
-  const iconColX = x + 12
-  const iconCenterX = iconColX + 9  // centre des icônes (col de 18mm)
-  const textColX = x + 32
-  const textW = w - 44
-  const lineHeight = 18
-  let rowY = y + 32
+  // ─── Items (compact, deux lignes, aligné centre vertical)
+  const iconColX = x + 10
+  const iconCenterX = iconColX + 7
+  const textColX = x + 26
+  const lineHeight = 14
+  let rowY = y + 25
 
   // 1) Couronne royale
-  drawRoyalCrownBadge(doc, iconCenterX, rowY + 4, 6)
+  drawRoyalCrownBadge(doc, iconCenterX, rowY + 3, 5)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(13)
+  doc.setFontSize(12)
   setText(doc, C_INK)
-  doc.text('Ancêtre royal', textColX, rowY + 1, { baseline: 'top' })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  setText(doc, C_BROWN)
-  doc.text('Titre Damel, Teigne, Almany, Linguère…', textColX, rowY + 7, { baseline: 'top', maxWidth: textW })
-  rowY += lineHeight + 4
-
-  // 2) Couple (ligne dorée + point)
-  setDraw(doc, C_LINE_COUPLE)
-  doc.setLineWidth(1.8)
-  doc.line(iconColX, rowY + 4, iconColX + 18, rowY + 4)
-  setFill(doc, C_LINE_COUPLE)
-  doc.circle(iconColX + 9, rowY + 4, 1.6, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(13)
-  setText(doc, C_INK)
-  doc.text('Couple', textColX, rowY + 1, { baseline: 'top' })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  setText(doc, C_BROWN)
-  doc.text('Mariage ou union', textColX, rowY + 7, { baseline: 'top', maxWidth: textW })
+  doc.text('Ancêtre royal', textColX, rowY + 3, { baseline: 'middle' })
   rowY += lineHeight
 
-  // 3) Filiation (vertical pointillé)
-  setDraw(doc, C_LINE_PARENT)
-  doc.setLineWidth(1.3)
-  doc.setLineDashPattern([1.8, 1.2], 0)
-  doc.line(iconColX + 9, rowY, iconColX + 9, rowY + 10)
-  doc.setLineDashPattern([], 0)
+  // 2) Récit familial disponible (icône scroll vert)
+  doc.setFillColor(30, 58, 47)  // heritage-green
+  doc.circle(iconCenterX, rowY + 3, 4, 'F')
+  // Petite icône scroll blanche stylisée à l'intérieur (3 lignes)
+  doc.setDrawColor(255, 255, 255)
+  doc.setLineWidth(0.5)
+  doc.line(iconCenterX - 1.5, rowY + 1.8, iconCenterX + 1.5, rowY + 1.8)
+  doc.line(iconCenterX - 1.5, rowY + 3, iconCenterX + 1.5, rowY + 3)
+  doc.line(iconCenterX - 1.5, rowY + 4.2, iconCenterX + 1.5, rowY + 4.2)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(13)
+  doc.setFontSize(12)
   setText(doc, C_INK)
-  doc.text('Filiation', textColX, rowY + 1, { baseline: 'top' })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  setText(doc, C_BROWN)
-  doc.text('Lien parent-enfant', textColX, rowY + 7, { baseline: 'top', maxWidth: textW })
-  rowY += lineHeight
-
-  // 4) Cousin (horizontal pointillé terracotta)
-  doc.setDrawColor(160, 82, 45)
-  doc.setLineWidth(1.3)
-  doc.setLineDashPattern([1.5, 2], 0)
-  doc.line(iconColX, rowY + 4, iconColX + 18, rowY + 4)
-  doc.setLineDashPattern([], 0)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(13)
-  setText(doc, C_INK)
-  doc.text('Cousin·s', textColX, rowY + 1, { baseline: 'top' })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  setText(doc, C_BROWN)
-  doc.text('Lien entre cousins de même génération', textColX, rowY + 7, { baseline: 'top', maxWidth: textW })
+  doc.text('Récit familial disponible', textColX, rowY + 3, { baseline: 'middle' })
 }
 
 export async function downloadFamilyTreePdf(
@@ -384,29 +392,43 @@ export async function downloadFamilyTreePdf(
   })
   doc.text(`Édition du ${today}`, PAGE_W / 2, 126, { align: 'center' })
 
-  // ─── Légende des pictogrammes (top-right, plus grande et lisible)
-  const legendW = 220
-  const legendH = 115
+  // ─── Encart de description (top-right, discret, sans fond)
+  const descW = 220
+  const descX = PAGE_W - SIDE_MARGIN - descW
+  const descY = 40
+  drawDescription(doc, descX, descY, descW)
+
+  // ─── Légende des pictogrammes (bottom-right, compacte)
+  const legendW = 175
+  const legendH = 55
   const legendX = PAGE_W - SIDE_MARGIN - legendW
-  const legendY = TOP_MARGIN - legendH - 5
+  const legendY = PAGE_H - 30 - legendH  // 30mm de marge depuis le bas
   drawLegend(doc, legendX, legendY, legendW, legendH)
 
   // ─── Calcul de la zone arbre et de l'échelle
+  // On étire l'arbre HORIZONTALEMENT pour que les cartes prennent plus
+  // de largeur et que les noms longs ne wrappent pas. Le facteur est
+  // appliqué aux positions X ET à la largeur des cartes (NODE_W).
+  const X_STRETCH = 1.45
   const treeAreaW = PAGE_W - 2 * SIDE_MARGIN
   const treeAreaH = PAGE_H - TOP_MARGIN - BOTTOM_MARGIN
-  const scaleX = treeAreaW / layout.width
+  const stretchedLayoutW = layout.width * X_STRETCH
+  const scaleX = treeAreaW / stretchedLayoutW
   const scaleY = treeAreaH / layout.height
   // Plafond : éviter des cartes gigantesques quand l'arbre est petit
   const MAX_SCALE = 0.85
   const scale = Math.min(scaleX, scaleY, MAX_SCALE)
 
-  const scaledW = layout.width * scale
+  const scaledW = stretchedLayoutW * scale
   const scaledH = layout.height * scale
   const offsetX = SIDE_MARGIN + (treeAreaW - scaledW) / 2
   const offsetY = TOP_MARGIN + (treeAreaH - scaledH) / 2
 
-  const tx = (x: number) => offsetX + x * scale
+  // Positions étirées horizontalement
+  const tx = (x: number) => offsetX + x * X_STRETCH * scale
   const ty = (y: number) => offsetY + y * scale
+  // Largeur de carte dans le PDF (NODE_W étiré)
+  const pdfNodeW = NODE_W * X_STRETCH
 
   // ─── Lignes de couples (horizontales)
   setDraw(doc, C_LINE_COUPLE)
@@ -435,7 +457,7 @@ export async function downloadFamilyTreePdf(
 
     const nx = tx(pos.x)
     const ny = ty(pos.y)
-    const nw = NODE_W * scale
+    const nw = pdfNodeW * scale
     const nh = NODE_H * scale
 
     // ─ Carte : fond blanc + bordure

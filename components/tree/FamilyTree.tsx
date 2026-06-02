@@ -6,6 +6,7 @@ import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { computeLayout, NODE_W, NODE_H } from '@/lib/treeLayout'
 import PersonNode from './PersonNode'
 import { ZoomIn, ZoomOut, Maximize2, LocateFixed, HelpCircle, X, Crown, ScrollText } from 'lucide-react'
+// Note : Crown et ScrollText utilisés dans la légende, LocateFixed sur le bouton Recentrer
 import { cn } from '@/lib/utils'
 
 interface FamilyTreeProps {
@@ -22,6 +23,11 @@ interface FamilyTreeProps {
   onCenterDone?: () => void
   /** Map person_id → souvenirs[], pour afficher l'indicateur de souvenirs */
   souvenirsByPerson?: Map<string, Souvenir[]>
+  /** Callback pour basculer le filtre "ancêtres royaux" depuis la légende */
+  onToggleRoyalFilter?: () => void
+  /** Filtre "récits familiaux" : assombrit les personnes sans récit */
+  souvenirFilter?: boolean
+  onToggleSouvenirFilter?: () => void
 }
 
 export default function FamilyTree({
@@ -37,6 +43,9 @@ export default function FamilyTree({
   centerTargetId = null,
   onCenterDone,
   souvenirsByPerson,
+  onToggleRoyalFilter,
+  souvenirFilter = false,
+  onToggleSouvenirFilter,
 }: FamilyTreeProps) {
   const transformRef = useRef<any>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -83,19 +92,21 @@ export default function FamilyTree({
     transformRef.current?.setTransform(targetX, targetY, scale, animate ? 300 : 0)
   }, [canvasWidth, focalCenterX, focalBottomY])
 
-  // Centrage initial après chaque changement de layout/focal
-  // + animation pulse dorée sur le focal pour bien le repérer
-  const [focalPulse, setFocalPulse] = useState(false)
+  // Centrage initial après chaque changement de layout/focal (sans pulse)
   useEffect(() => {
     if (persons.length === 0) return
     const t = setTimeout(() => centerOnFocal(false), 50)
-    setFocalPulse(true)
-    const tPulse = setTimeout(() => setFocalPulse(false), 3500)
-    return () => { clearTimeout(t); clearTimeout(tPulse) }
+    return () => { clearTimeout(t) }
   }, [layout, focalId, persons.length, centerOnFocal])
 
   // État légende (panneau dépliable)
   const [legendOpen, setLegendOpen] = useState(false)
+  // Pulse doré sur le bouton Légende au chargement (2.5s) pour le découvrir
+  const [legendButtonPulse, setLegendButtonPulse] = useState(true)
+  useEffect(() => {
+    const t = setTimeout(() => setLegendButtonPulse(false), 2500)
+    return () => clearTimeout(t)
+  }, [])
 
   // Centrage sur une personne ciblée (depuis la recherche)
   useEffect(() => {
@@ -210,11 +221,7 @@ export default function FamilyTree({
           <ZoomOut className="w-5 h-5" />
         </button>
         <button
-          onClick={() => {
-            centerOnFocal(true)
-            setFocalPulse(true)
-            setTimeout(() => setFocalPulse(false), 3500)
-          }}
+          onClick={() => centerOnFocal(true)}
           className="group relative w-10 h-10 bg-white rounded-lg shadow-warm-md border-2 border-royal-gold/40 flex items-center justify-center text-royal-gold-dark hover:bg-royal-gold-light transition-colors"
           title="Recentrer sur moi"
         >
@@ -232,20 +239,39 @@ export default function FamilyTree({
           <Maximize2 className="w-5 h-5" />
         </button>
         <button
-          onClick={() => setLegendOpen(o => !o)}
+          onClick={() => {
+            setLegendOpen(o => !o)
+            setLegendButtonPulse(false)
+          }}
           className={cn(
-            'w-10 h-10 rounded-lg shadow-warm-md border flex items-center justify-center transition-colors',
+            'relative w-10 h-10 rounded-lg shadow-warm-md border flex items-center justify-center transition-colors',
             legendOpen
               ? 'bg-heritage-ink text-white border-heritage-ink'
               : 'bg-white text-heritage-ink border-parchment-400 hover:bg-parchment-200',
           )}
-          title="Légende des icônes"
+          title="Légende"
         >
-          <HelpCircle className="w-5 h-5" />
+          {/* Pulse doré au chargement pour attirer l'œil */}
+          {legendButtonPulse && !legendOpen && (
+            <>
+              <span
+                className="absolute inset-0 rounded-lg pointer-events-none ring-4 ring-royal-gold"
+                style={{ animation: 'youm-pulse-ring 1.6s ease-out 2' }}
+              />
+              <span
+                className="absolute -inset-2 rounded-lg pointer-events-none"
+                style={{
+                  boxShadow: '0 0 24px 4px rgba(196, 146, 42, 0.55)',
+                  animation: 'youm-pulse-glow 1.6s ease-out 2',
+                }}
+              />
+            </>
+          )}
+          <HelpCircle className="w-5 h-5 relative z-10" />
         </button>
       </div>
 
-      {/* Panneau Légende */}
+      {/* Panneau Légende — items cliquables = boutons de filtre */}
       {legendOpen && (
         <div className="absolute top-4 right-16 z-30 w-72 bg-white rounded-2xl shadow-warm-xl border-2 border-parchment-400 p-4 animate-fade-in">
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-parchment-200">
@@ -260,61 +286,60 @@ export default function FamilyTree({
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          <ul className="space-y-2.5 text-xs">
-            <li className="flex items-start gap-2.5">
-              <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD43B' }}>
-                <Crown className="w-3.5 h-3.5 text-heritage-ink" fill="currentColor" fillOpacity={0.2} />
-              </span>
-              <span className="text-heritage-brown leading-snug pt-1">
-                <strong className="text-heritage-ink">Ancêtre royal</strong> — a porté un titre (Damel, Teigne, Almany, Linguère…)
-              </span>
+          <p className="text-[10px] text-heritage-brown italic mb-2.5">
+            Cliquez pour filtrer l&apos;arbre.
+          </p>
+          <ul className="space-y-2">
+            <li>
+              <button
+                type="button"
+                onClick={() => onToggleRoyalFilter?.()}
+                className={cn(
+                  'w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-colors text-left',
+                  royalFilter
+                    ? 'bg-royal-gold-light border border-royal-gold/40'
+                    : 'hover:bg-parchment-100 border border-transparent',
+                )}
+              >
+                <span
+                  className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: '#FFD43B' }}
+                >
+                  <Crown className="w-3.5 h-3.5 text-heritage-ink" fill="currentColor" fillOpacity={0.2} />
+                </span>
+                <span className="flex-1 text-xs font-semibold text-heritage-ink">
+                  Ancêtre royal
+                </span>
+                {royalFilter && (
+                  <span className="text-[9px] font-bold uppercase tracking-wide text-royal-gold-dark">
+                    Filtré
+                  </span>
+                )}
+              </button>
             </li>
-            <li className="flex items-start gap-2.5">
-              <span className="flex-shrink-0 w-7 h-7 rounded-full bg-heritage-green flex items-center justify-center text-white">
-                <ScrollText className="w-3.5 h-3.5" strokeWidth={2.2} />
-              </span>
-              <span className="text-heritage-brown leading-snug pt-1">
-                <strong className="text-heritage-ink">Récits familiaux</strong> disponibles — cliquer pour les lire
-              </span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
-                <svg width="20" height="14" viewBox="0 0 20 14">
-                  <line x1="0" y1="7" x2="20" y2="7" stroke="#B8A07A" strokeWidth="2.5" strokeLinecap="round" />
-                  <circle cx="10" cy="7" r="2.5" fill="#B8A07A" />
-                </svg>
-              </span>
-              <span className="text-heritage-brown leading-snug pt-1">
-                <strong className="text-heritage-ink">Couple</strong> — mariage ou union
-              </span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
-                <svg width="14" height="20" viewBox="0 0 14 20">
-                  <line x1="7" y1="0" x2="7" y2="20" stroke="#C7B59A" strokeWidth="1.8" strokeDasharray="3 3" strokeLinecap="round" />
-                </svg>
-              </span>
-              <span className="text-heritage-brown leading-snug pt-1">
-                <strong className="text-heritage-ink">Filiation</strong> — lien parent-enfant
-              </span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
-                <svg width="22" height="10" viewBox="0 0 22 10">
-                  <line x1="0" y1="5" x2="22" y2="5" stroke="#A0522D" strokeWidth="1.6" strokeDasharray="2 3" strokeLinecap="round" />
-                </svg>
-              </span>
-              <span className="text-heritage-brown leading-snug pt-1">
-                <strong className="text-heritage-ink">Cousin·s</strong> — lien entre cousins de même génération
-              </span>
-            </li>
-            <li className="flex items-start gap-2.5 pt-1.5 border-t border-parchment-200">
-              <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-royal-gold/20 border border-royal-gold/40 flex items-center justify-center text-royal-gold-dark">
-                <LocateFixed className="w-3.5 h-3.5" />
-              </span>
-              <span className="text-heritage-brown leading-snug pt-1">
-                <strong className="text-heritage-ink">Recentrer</strong> — retour à la personne la plus récente (vous)
-              </span>
+            <li>
+              <button
+                type="button"
+                onClick={() => onToggleSouvenirFilter?.()}
+                className={cn(
+                  'w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-colors text-left',
+                  souvenirFilter
+                    ? 'bg-heritage-green/10 border border-heritage-green/30'
+                    : 'hover:bg-parchment-100 border border-transparent',
+                )}
+              >
+                <span className="flex-shrink-0 w-7 h-7 rounded-full bg-heritage-green flex items-center justify-center text-white">
+                  <ScrollText className="w-3.5 h-3.5" strokeWidth={2.2} />
+                </span>
+                <span className="flex-1 text-xs font-semibold text-heritage-ink">
+                  Récit familial disponible
+                </span>
+                {souvenirFilter && (
+                  <span className="text-[9px] font-bold uppercase tracking-wide text-heritage-green">
+                    Filtré
+                  </span>
+                )}
+              </button>
             </li>
           </ul>
         </div>
@@ -413,11 +438,11 @@ export default function FamilyTree({
                   selected={selectedIds.has(person.id)}
                   dimmed={
                     (royalFilter && !person.is_royal) ||
+                    (souvenirFilter && !(souvenirsByPerson?.get(person.id)?.length)) ||
                     (!!searchMatchIds && !searchMatchIds.has(person.id))
                   }
                   highlighted={!!searchMatchIds?.has(person.id)}
                   souvenirs={souvenirsByPerson?.get(person.id) || []}
-                  pulsing={focalPulse && person.id === focalId}
                   onClick={() => {
                     if (selectionMode) {
                       const next = new Set(selectedIds)
