@@ -22,7 +22,7 @@ export default function Header({}: HeaderProps) {
   const pathname = usePathname()
 
   const isHome = pathname === '/'
-  const isRoyals = pathname === '/souvenirs'
+  const isRoyals = pathname === '/recits'
   const isKingdom = KINGDOMS.some(k => k.href === pathname)
 
   return (
@@ -55,7 +55,7 @@ export default function Header({}: HeaderProps) {
             </Link>
 
             <Link
-              href="/souvenirs"
+              href="/recits"
               className={cn(
                 'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors',
                 isRoyals
@@ -112,7 +112,7 @@ export default function Header({}: HeaderProps) {
               Arbre généalogique
             </Link>
             <Link
-              href="/souvenirs"
+              href="/recits"
               className={cn(
                 'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold flex-1 justify-center',
                 isRoyals

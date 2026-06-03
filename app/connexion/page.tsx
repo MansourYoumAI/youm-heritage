@@ -51,9 +51,9 @@ export default function ConnexionPage() {
           style={{ background: 'radial-gradient(circle, #C2541A 0%, transparent 70%)' }} />
       </div>
 
-      <div className="relative w-full max-w-sm">
+      <div className="relative w-full max-w-md">
         {/* En-tête */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6"
             style={{ background: 'linear-gradient(135deg, #C4922A 0%, #8B6214 100%)' }}>
             <span className="text-3xl font-display font-bold text-white">Y</span>
@@ -122,8 +122,25 @@ export default function ConnexionPage() {
           </form>
         </div>
 
-        <p className="text-center text-sm text-heritage-brown mt-6">
-          Contactez un membre de la famille si vous n'avez pas le mot de passe.
+        {/* Description : même texte que l'encart du PDF, en italique discret */}
+        <div className="mt-8 pl-4 border-l-2 border-royal-gold/40 space-y-2.5 text-sm text-heritage-brown italic leading-relaxed">
+          <p>
+            Cet arbre retrace plusieurs siècles de filiations, depuis les royaumes
+            pré-coloniaux du Cayor, du Baol et du Fouta-Toro jusqu&apos;à aujourd&apos;hui.
+          </p>
+          <p>
+            Les liens présentés s&apos;appuient sur des sources vérifiées : archives
+            historiques et tradition orale avérée.
+          </p>
+          <p>
+            Cette mémoire est vivante et continue d&apos;être enrichie au fil des
+            découvertes.
+          </p>
+        </div>
+
+        {/* Signature en bas */}
+        <p className="text-center text-[11px] text-heritage-brown opacity-70 mt-10">
+          Réalisé par Mansour Youm, Juin 2026
         </p>
       </div>
     </div>

@@ -9,6 +9,16 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      // Ancienne route /souvenirs renommée en /recits (juin 2026)
+      {
+        source: '/souvenirs',
+        destination: '/recits',
+        permanent: true,
+      },
+    ]
+  },
 }
 
 export default nextConfig
