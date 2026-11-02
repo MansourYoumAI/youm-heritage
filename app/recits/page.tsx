@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ScrollText, Crown, Mic, ChevronRight, Calendar, ArrowRight, ArrowLeft, X } from 'lucide-react'
-import Header from '@/components/layout/Header'
+import Sidebar from '@/components/layout/Sidebar'
 import Lightbox from '@/components/Lightbox'
 import { createClient } from '@/lib/supabase'
 import type { Person, Souvenir } from '@/lib/types'
@@ -98,10 +98,11 @@ export default function SouvenirsPage() {
   }, [sorted, filter])
 
   return (
-    <div className="min-h-screen bg-parchment-100 bg-grain">
-      <Header />
+    <div className="flex min-h-screen bg-parchment-100 bg-grain">
+      <Sidebar />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
+      <main className="flex-1 min-w-0 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
         <section className="rounded-3xl border-2 border-royal-gold/30 px-6 sm:px-10 py-7 sm:py-9 bg-gradient-to-br from-royal-gold-light to-parchment-100 shadow-warm-md">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/70 text-[10px] font-bold uppercase tracking-wide text-heritage-brown mb-2">
             <Crown className="w-3 h-3" />
@@ -179,6 +180,7 @@ export default function SouvenirsPage() {
             ))}
           </ol>
         )}
+        </div>
       </main>
 
       {lightboxSrc && (

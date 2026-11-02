@@ -105,30 +105,28 @@ export default function FamilyTree({
     return { focalCenterX: fx, focalBottomY: fy }
   }, [layout, canvasWidth, canvasHeight, TOP_PADDING, LEFT_LABEL_W, RIGHT_TIMELINE_W])
 
-  // ─── Centrage initial : montre le HAUT de l'arbre (ancêtres anciens),
-  //     avec le titre doré visible et les premières générations royales.
+  // ─── Centrage initial : vue d'ensemble montrant les labels de génération,
+  //     les repères historiques (gauche) et la largeur complète de l'arbre.
   const centerOnFocal = useCallback((animate = true) => {
     if (!transformRef.current) return
     const wrapper = transformRef.current?.instance?.wrapperComponent as HTMLDivElement | undefined
     if (!wrapper) return
     const rect = wrapper.getBoundingClientRect()
 
-    // Hauteur voulue sur l'écran : ~7 générations (dézoom confortable comme la vue d'aperçu)
-    const visibleGens = 7
+    // On veut voir le canvas en entier dans la largeur (labels gauche + arbre),
+    // et au moins ~11 générations dans la hauteur. Scale pris sur la contrainte
+    // la plus serrée pour que tout soit visible.
+    const visibleGens = 11
     const neededHeight = visibleGens * (NODE_H + 70) + TOP_PADDING
-    // Largeur voulue : centrée sur l'axe focal, au moins 3 cartes
-    const neededWidth = Math.max(canvasWidth * 0.65, 3 * (NODE_W + 36) + LEFT_LABEL_W + RIGHT_TIMELINE_W)
     const scaleY = (rect.height * 0.95) / neededHeight
-    const scaleX = (rect.width * 0.98) / neededWidth
-    const scale = Math.max(0.2, Math.min(scaleX, scaleY, 1))
+    const scaleX = (rect.width * 0.98) / canvasWidth
+    const scale = Math.max(0.12, Math.min(scaleX, scaleY, 1))
 
-    // Centrer horizontalement sur le milieu du canvas (axe focal)
-    const centerCanvasX = focalCenterX
-    const targetX = rect.width / 2 - centerCanvasX * scale
-    // Caler le HAUT du canvas en haut de la vue (avec un petit padding)
-    const targetY = 20 - 0 * scale
+    // Centrer horizontalement sur le milieu du canvas (pour que gauche et droite soient visibles)
+    const targetX = rect.width / 2 - (canvasWidth / 2) * scale
+    const targetY = 20
     transformRef.current?.setTransform(targetX, targetY, scale, animate ? 300 : 0)
-  }, [focalCenterX, canvasWidth, LEFT_LABEL_W, RIGHT_TIMELINE_W, TOP_PADDING])
+  }, [canvasWidth, TOP_PADDING])
 
   // Centrage initial après chaque changement de layout/focal (sans pulse)
   useEffect(() => {
@@ -253,28 +251,27 @@ export default function FamilyTree({
   return (
     <div className="relative w-full h-full bg-parchment-100 overflow-hidden rounded-xl" ref={wrapperRef}>
       {/* ─── Titre toujours visible : overlay flottant centré en haut, hors du canvas pan/zoom ─── */}
-      <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none pt-5 pb-3 bg-gradient-to-b from-parchment-100 via-parchment-100/95 to-transparent">
+      <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none pt-3 pb-2 bg-gradient-to-b from-parchment-100 via-parchment-100/95 to-transparent">
         <h1
           className="text-center font-display italic font-bold leading-none"
           style={{
-            fontSize: 'clamp(28px, 3.6vw, 56px)',
+            fontSize: 'clamp(14px, 1.4vw, 20px)',
             background: 'linear-gradient(180deg, #E8B547 0%, #8B6214 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
-            letterSpacing: '0.01em',
+            letterSpacing: '0.02em',
           }}
         >
           Arbre généalogique de la famille Youm
         </h1>
-        {/* Ornement : trait d'or + losange central */}
-        <div className="flex items-center justify-center gap-2 mt-2">
-          <span className="w-32 h-px bg-royal-gold/50" />
+        <div className="flex items-center justify-center gap-1.5 mt-1">
+          <span className="w-14 h-px bg-royal-gold/50" />
           <span
-            className="w-2 h-2 rotate-45"
+            className="w-1.5 h-1.5 rotate-45"
             style={{ backgroundColor: '#C4922A', opacity: 0.75 }}
           />
-          <span className="w-32 h-px bg-royal-gold/50" />
+          <span className="w-14 h-px bg-royal-gold/50" />
         </div>
       </div>
 
@@ -585,8 +582,8 @@ export default function FamilyTree({
               }
               const yOffset = ('yOffset' in ev && typeof ev.yOffset === 'number') ? ev.yOffset : 0
               const finalY = anchorY + yOffset
-              const yearSize = ev.big ? 22 : 15
-              const textSize = ev.big ? 14 : 11
+              const yearSize = 20
+              const textSize = 13
               return (
                 <div
                   key={`history-${i}`}
@@ -606,7 +603,7 @@ export default function FamilyTree({
                       {ev.year}
                     </div>
                     <div
-                      className="font-display italic leading-tight"
+                      className="font-display italic font-semibold leading-tight"
                       style={{ fontSize: `${textSize}px`, color: CARMINE, opacity: 0.95 }}
                     >
                       {ev.text}
@@ -616,8 +613,8 @@ export default function FamilyTree({
                     className="flex-shrink-0"
                     style={{ color: CARMINE, opacity: 0.9 }}
                     strokeWidth={2.2}
-                    width={ev.big ? 20 : 15}
-                    height={ev.big ? 20 : 15}
+                    width={18}
+                    height={18}
                   />
                 </div>
               )

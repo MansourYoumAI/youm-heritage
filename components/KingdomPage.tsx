@@ -6,7 +6,7 @@ import {
   Crown, MapPin, Calendar, ChevronRight, Sparkles,
   Pencil, X, Save, Loader2, Plus, Trash2, Upload, Download,
 } from 'lucide-react'
-import Header from '@/components/layout/Header'
+import Sidebar from '@/components/layout/Sidebar'
 import SenegalMap from '@/components/SenegalMap'
 import SouvenirsSection from '@/components/SouvenirsSection'
 import type { Kingdom, KingdomSlug, Person } from '@/lib/types'
@@ -231,9 +231,9 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-parchment-100">
-        <Header />
-        <div className="flex items-center justify-center py-32">
+      <div className="flex min-h-screen bg-parchment-100">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center py-32">
           <div className="w-12 h-12 rounded-full border-4 border-parchment-400 border-t-terracotta-500 animate-spin" />
         </div>
       </div>
@@ -242,9 +242,9 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
 
   if (!kingdom) {
     return (
-      <div className="min-h-screen bg-parchment-100">
-        <Header />
-        <div className="max-w-2xl mx-auto px-6 py-20 text-center">
+      <div className="flex min-h-screen bg-parchment-100">
+        <Sidebar />
+        <div className="flex-1 max-w-2xl mx-auto px-6 py-20 text-center">
           <h1 className="font-display text-3xl font-bold text-heritage-ink mb-3">
             Royaume introuvable
           </h1>
@@ -260,10 +260,11 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
   const k = editing && draft ? draft : kingdom
 
   return (
-    <div className="min-h-screen bg-parchment-100 bg-grain">
-      <Header />
+    <div className="flex min-h-screen bg-parchment-100 bg-grain">
+      <Sidebar />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-10">
+      <main className="flex-1 min-w-0 overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-10">
 
         {/* ─── Barre d'édition flottante en haut */}
         <div className="flex items-center justify-end gap-2">
@@ -641,6 +642,7 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
             }}
           />
         </section>
+        </div>
       </main>
 
       {/* ─── Modal mot de passe ────────────────────────────── */}
