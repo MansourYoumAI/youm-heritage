@@ -17,6 +17,25 @@ export const SIBLING_GAP = 24
 export const SPOUSE_GAP = 30
 export const V_GAP = 70
 
+export type Kingdom = 'Cayor' | 'Baol' | 'Fouta-Toro' | 'Saloum' | 'Djolof' | 'Autre'
+
+export interface GenerationBand {
+  /** 0 = focal (étiquette « N »), 1 = parents, 2 = grands-parents, etc. */
+  depth: number
+  /** « N » pour depth 0, sinon le chiffre en toutes lettres */
+  label: string
+  /** Y haut de la bande (inclus) — début de la génération */
+  yTop: number
+  /** Y bas de la bande (inclus) — bas des cartes de cette génération */
+  yBottom: number
+  /** IDs des personnes dans cette génération */
+  personIds: string[]
+  /** Personnes royales de cette génération, groupées par royaume */
+  royalsByKingdom: Partial<Record<Kingdom, string[]>>
+  /** Total de personnes royales dans la génération */
+  royalCount: number
+}
+
 export interface Layout {
   positions: Map<string, { x: number; y: number }>
   coupleEdges: Array<{ x1: number; y1: number; x2: number; y2: number; midX: number }>
@@ -25,6 +44,39 @@ export interface Layout {
   cousinEdges: Array<{ x1: number; y1: number; x2: number; y2: number }>
   width: number
   height: number
+  /** Bandes de générations, du bas (focal = depth 0) vers le haut */
+  generations: GenerationBand[]
+}
+
+/**
+ * Devine le royaume à partir d'un titre royal. Prend en compte les cas
+ * composites (ex : « Damel-Teigne du Cayor et du Baol » → les deux).
+ */
+export function classifyKingdoms(royalTitle: string | null | undefined): Kingdom[] {
+  if (!royalTitle) return []
+  const t = royalTitle.toLowerCase()
+  const kingdoms = new Set<Kingdom>()
+  // Mots-clés directs
+  if (t.includes('cayor') || t.includes('kayor')) kingdoms.add('Cayor')
+  if (t.includes('baol')) kingdoms.add('Baol')
+  if (t.includes('fouta') || t.includes('toro')) kingdoms.add('Fouta-Toro')
+  if (t.includes('saloum')) kingdoms.add('Saloum')
+  if (t.includes('djolof') || t.includes('jolof')) kingdoms.add('Djolof')
+  // Titres implicites : Damel = Cayor, Teigne = Baol, Almany/Almamy = Fouta-Toro, Bourba = Djolof
+  if (kingdoms.size === 0) {
+    if (t.includes('damel')) kingdoms.add('Cayor')
+    if (t.includes('teigne')) kingdoms.add('Baol')
+    if (t.includes('almany') || t.includes('almamy')) kingdoms.add('Fouta-Toro')
+    if (t.includes('bourba')) kingdoms.add('Djolof')
+  }
+  if (kingdoms.size === 0) kingdoms.add('Autre')
+  return Array.from(kingdoms)
+}
+
+/** Convertit depth en libellé de génération (0 = « N » = focal). */
+export function depthToGenerationLabel(depth: number): string {
+  if (depth === 0) return 'N'
+  return String(depth)
 }
 
 export function computeLayout(
@@ -110,7 +162,7 @@ export function computeLayout(
   const positions = new Map<string, { x: number; y: number }>()
 
   if (!focal) {
-    return { positions, coupleEdges: [], parentEdges: [], cousinEdges: [], width: 800, height: 600 }
+    return { positions, coupleEdges: [], parentEdges: [], cousinEdges: [], width: 800, height: 600, generations: [] }
   }
 
   // ─── Détecte un mariage consanguin (deux personnes qui partagent un parent)
@@ -545,5 +597,53 @@ export function computeLayout(
     })
   }
 
-  return { positions, coupleEdges, parentEdges, cousinEdges, width, height }
+  // ─── Génératons : regrouper les personnes par niveau Y.
+  // Après normalisation, le focal est au Y maximal (il est en bas des ancêtres,
+  // sauf si lui-même a des enfants placés dessous).
+  const focalPosFinal = positions.get(focal)
+  const focalYFinal = focalPosFinal?.y ?? 0
+  const ySet = new Set<number>()
+  for (const pos of positions.values()) ySet.add(pos.y)
+  const sortedYs = Array.from(ySet).sort((a, b) => a - b) // du haut (plus petit Y) vers le bas
+
+  // depth = combien de « sauts » génération entre cette personne et le focal.
+  // La bande du focal a depth = 0 (étiquette « N »). Au-dessus : 1, 2, 3…
+  // En dessous (enfants du focal) : -1, -2… — on ne les étiquette pas pour l'instant.
+  const generations: GenerationBand[] = []
+  for (const yLevel of sortedYs) {
+    const deltaY = focalYFinal - yLevel
+    const steps = Math.round(deltaY / (NODE_H + V_GAP))
+    if (steps < 0) continue // on ignore les descendants du focal (étiquettes futures si besoin)
+    const depth = steps
+
+    const idsAtY: string[] = []
+    for (const [id, pos] of positions) {
+      if (pos.y === yLevel) idsAtY.push(id)
+    }
+    const royalsByKingdom: Partial<Record<Kingdom, string[]>> = {}
+    let royalCount = 0
+    for (const id of idsAtY) {
+      const p = personsMap.get(id)
+      if (!p?.is_royal) continue
+      royalCount++
+      const kgs = classifyKingdoms(p.royal_title)
+      for (const kg of kgs) {
+        if (!royalsByKingdom[kg]) royalsByKingdom[kg] = []
+        royalsByKingdom[kg]!.push(id)
+      }
+    }
+    generations.push({
+      depth,
+      label: depthToGenerationLabel(depth),
+      yTop: yLevel,
+      yBottom: yLevel + NODE_H,
+      personIds: idsAtY,
+      royalsByKingdom,
+      royalCount,
+    })
+  }
+  // Trier par depth croissant (focal en premier, puis parents, grands-parents...)
+  generations.sort((a, b) => a.depth - b.depth)
+
+  return { positions, coupleEdges, parentEdges, cousinEdges, width, height, generations }
 }

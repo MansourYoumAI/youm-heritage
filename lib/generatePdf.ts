@@ -95,12 +95,50 @@ function drawInitialsBox(
 }
 
 function drawDecorativeBorder(doc: jsPDF) {
-  setDraw(doc, C_GOLD)
-  doc.setLineWidth(0.5)
   const m = 20
+  const innerInset = 4
+
+  // ─ Bordure principale (double rectangle doré)
+  setDraw(doc, C_GOLD)
+  doc.setLineWidth(0.8)
   doc.rect(m, m, PAGE_W - 2 * m, PAGE_H - 2 * m)
-  doc.setLineWidth(0.2)
-  doc.rect(m + 4, m + 4, PAGE_W - 2 * m - 8, PAGE_H - 2 * m - 8)
+  doc.setLineWidth(0.3)
+  doc.rect(m + innerInset, m + innerInset, PAGE_W - 2 * m - 2 * innerInset, PAGE_H - 2 * m - 2 * innerInset)
+
+  // ─ Ornements aux 4 coins : losange + arc gracieux
+  const cornerInset = m - 1  // les coins débordent légèrement la bordure
+  const ornSize = 12  // taille de chaque ornement
+  const corners: Array<[number, number, number, number]> = [
+    [cornerInset, cornerInset, 1, 1],                          // haut-gauche
+    [PAGE_W - cornerInset, cornerInset, -1, 1],                // haut-droite
+    [cornerInset, PAGE_H - cornerInset, 1, -1],                // bas-gauche
+    [PAGE_W - cornerInset, PAGE_H - cornerInset, -1, -1],      // bas-droite
+  ]
+
+  setFill(doc, C_GOLD)
+  setDraw(doc, C_GOLD_DARK)
+  doc.setLineWidth(0.3)
+
+  for (const [cx, cy, sx, sy] of corners) {
+    // Losange central
+    const diamondR = ornSize * 0.45
+    const diamondPts: Array<[number, number]> = [
+      [diamondR * sx, diamondR * sy],
+      [-diamondR * sx, diamondR * sy],
+      [-diamondR * sx, -diamondR * sy],
+    ]
+    doc.lines(diamondPts, cx, cy - diamondR * sy, [1, 1], 'FD', true)
+
+    // Deux petits "pétales" qui s'écartent du losange le long de la bordure
+    setFill(doc, C_GOLD)
+    const petalLen = ornSize * 0.9
+    // Pétale horizontal (le long de la bordure horizontale)
+    doc.circle(cx + petalLen * sx * 0.55, cy, 1.4, 'F')
+    doc.circle(cx + petalLen * sx, cy, 1, 'F')
+    // Pétale vertical (le long de la bordure verticale)
+    doc.circle(cx, cy + petalLen * sy * 0.55, 1.4, 'F')
+    doc.circle(cx, cy + petalLen * sy, 1, 'F')
+  }
 }
 
 /**
@@ -574,6 +612,25 @@ export async function downloadFamilyTreePdf(
       doc.setFontSize(dateSize)
       setText(doc, C_LIGHT_BROWN)
       doc.text(lifeText, textX, cursorY, { baseline: 'top', maxWidth: textW })
+    }
+
+    // ─ Cadre royal : petits coins ornés dorés aux 4 angles de la carte
+    if (person.is_royal) {
+      const ornL = Math.max(2.5, nh * 0.10)  // longueur du trait du coin
+      setDraw(doc, C_GOLD)
+      doc.setLineWidth(Math.max(0.6, 1.1 * scale))
+      // Haut-gauche
+      doc.line(nx, ny + ornL, nx, ny)
+      doc.line(nx, ny, nx + ornL, ny)
+      // Haut-droite
+      doc.line(nx + nw - ornL, ny, nx + nw, ny)
+      doc.line(nx + nw, ny, nx + nw, ny + ornL)
+      // Bas-gauche
+      doc.line(nx, ny + nh - ornL, nx, ny + nh)
+      doc.line(nx, ny + nh, nx + ornL, ny + nh)
+      // Bas-droite
+      doc.line(nx + nw - ornL, ny + nh, nx + nw, ny + nh)
+      doc.line(nx + nw, ny + nh, nx + nw, ny + nh - ornL)
     }
 
     // ─ Badge couronne (jaune vif) en haut-droite de la carte, comme à l'écran

@@ -62,6 +62,7 @@ export default function HomePage() {
     router.push(`${pathname}?${params.toString()}`)
   }
 
+
   useEffect(() => {
     async function loadData() {
       const supabase = createClient()

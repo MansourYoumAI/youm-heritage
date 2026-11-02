@@ -2,9 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Crown, ScrollText, TreeDeciduous } from 'lucide-react'
+import { useState } from 'react'
+import { Crown, ScrollText, TreeDeciduous, Lock, LogOut } from 'lucide-react'
 import PersonDrawer from '@/components/PersonDrawer'
+import AdminLoginModal from '@/components/AdminLoginModal'
 import { cn } from '@/lib/utils'
+import { useAdminMode } from '@/lib/useAdminMode'
 
 // `showAddButton` est conservé pour compatibilité mais n'est plus utilisé
 // (les actions add/PDF/logout sont déplacées en flottant dans la vue arbre).
@@ -20,6 +23,8 @@ const KINGDOMS: { href: string; label: string }[] = [
 
 export default function Header({}: HeaderProps) {
   const pathname = usePathname()
+  const { isAdmin, enterPassword, logout } = useAdminMode()
+  const [loginOpen, setLoginOpen] = useState(false)
 
   const isHome = pathname === '/'
   const isRoyals = pathname === '/recits'
@@ -92,8 +97,28 @@ export default function Header({}: HeaderProps) {
             </div>
           </nav>
 
-          {/* Boutons supprimés : + ajouter, télécharger PDF, déconnexion
-              (déplacés en flottant à côté de la recherche dans la vue arbre) */}
+          {/* Bouton admin discret à droite */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {isAdmin ? (
+              <button
+                onClick={logout}
+                title="Quitter le mode administrateur"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-royal-gold-dark bg-royal-gold-light hover:bg-royal-gold hover:text-white transition-colors border border-royal-gold/40"
+              >
+                <Crown className="w-3 h-3" fill="currentColor" />
+                <span className="hidden sm:inline">Admin</span>
+                <LogOut className="w-2.5 h-2.5 opacity-70" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setLoginOpen(true)}
+                title="Mode administrateur"
+                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-parchment-500 hover:text-heritage-brown hover:bg-parchment-200 transition-colors"
+              >
+                <Lock className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Navigation mobile sous le header — 2 grands liens, royaumes en petite ligne */}
@@ -147,6 +172,17 @@ export default function Header({}: HeaderProps) {
       </header>
 
       <PersonDrawer />
+
+      {loginOpen && (
+        <AdminLoginModal
+          onClose={() => setLoginOpen(false)}
+          onSubmit={(pw) => {
+            const ok = enterPassword(pw)
+            if (ok) setLoginOpen(false)
+            return ok
+          }}
+        />
+      )}
     </>
   )
 }

@@ -17,6 +17,8 @@ interface PersonNodeProps {
   souvenirs?: Souvenir[]
   /** Animation pulse dorée (utilisée pour mettre en évidence le focal au chargement) */
   pulsing?: boolean
+  /** Mode administrateur : affiche les boutons + / éditer */
+  isAdmin?: boolean
 }
 
 export default function PersonNode({
@@ -27,6 +29,7 @@ export default function PersonNode({
   highlighted = false,
   souvenirs = [],
   pulsing = false,
+  isAdmin = false,
 }: PersonNodeProps) {
   const initials = getInitials(person)
   const hasSouvenirs = souvenirs.length > 0
@@ -132,6 +135,44 @@ export default function PersonNode({
           )}
         </div>
       </button>
+
+      {/* Cadre royal — petits ornements dorés aux 4 coins, discrets mais visibles */}
+      {person.is_royal && (
+        <>
+          <span
+            className="absolute top-0 left-0 w-3 h-3 pointer-events-none"
+            style={{
+              borderTop: '2px solid #C4922A',
+              borderLeft: '2px solid #C4922A',
+              borderTopLeftRadius: '0.75rem',
+            }}
+          />
+          <span
+            className="absolute top-0 right-0 w-3 h-3 pointer-events-none"
+            style={{
+              borderTop: '2px solid #C4922A',
+              borderRight: '2px solid #C4922A',
+              borderTopRightRadius: '0.75rem',
+            }}
+          />
+          <span
+            className="absolute bottom-0 left-0 w-3 h-3 pointer-events-none"
+            style={{
+              borderBottom: '2px solid #C4922A',
+              borderLeft: '2px solid #C4922A',
+              borderBottomLeftRadius: '0.75rem',
+            }}
+          />
+          <span
+            className="absolute bottom-0 right-0 w-3 h-3 pointer-events-none"
+            style={{
+              borderBottom: '2px solid #C4922A',
+              borderRight: '2px solid #C4922A',
+              borderBottomRightRadius: '0.75rem',
+            }}
+          />
+        </>
+      )}
 
       {/* Couronne (lignée royale) — vraie illustration plate dorée sur fond jaune vif */}
       {person.is_royal && (

@@ -3,7 +3,7 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import type { Person, Relationship, Souvenir } from '@/lib/types'
-import { computeLayout, NODE_W, NODE_H } from '@/lib/treeLayout'
+import { computeLayout, NODE_W, NODE_H, type GenerationBand } from '@/lib/treeLayout'
 import PersonNode from './PersonNode'
 import { HelpCircle, X, Crown, ScrollText, UserPlus, Download, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,8 @@ interface FamilyTreeProps {
   onAddMember?: () => void
   onDownloadPdf?: () => void
   downloadingPdf?: boolean
+  /** Ouvre le panneau des ancêtres royaux d'une génération donnée */
+  onOpenRoyalGeneration?: (gen: GenerationBand) => void
 }
 
 export default function FamilyTree({
@@ -52,6 +54,7 @@ export default function FamilyTree({
   onAddMember,
   onDownloadPdf,
   downloadingPdf = false,
+  onOpenRoyalGeneration,
 }: FamilyTreeProps) {
   const transformRef = useRef<any>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -61,7 +64,10 @@ export default function FamilyTree({
     [persons, relationships, focalId]
   )
 
-  const canvasWidth = Math.max(layout.width, 800)
+  // Bande à gauche réservée aux étiquettes de génération (chiffre + couronne).
+  const LEFT_LABEL_W = 90
+  const treeContentW = Math.max(layout.width, 800)
+  const canvasWidth = treeContentW + LEFT_LABEL_W
   const treeHeight = Math.max(layout.height, 600)
   // Marge fixe au-dessus pour permettre un peu de scroll vers le haut sans
   // gaspiller la moitié du canvas en espace vide.
@@ -77,12 +83,12 @@ export default function FamilyTree({
       const realY = pos.y + TOP_PADDING
       if (realY > maxRealY) {
         maxRealY = realY
-        fx = pos.x + NODE_W / 2
+        fx = pos.x + LEFT_LABEL_W + NODE_W / 2
         fy = realY + NODE_H
       }
     }
     return { focalCenterX: fx, focalBottomY: fy }
-  }, [layout, canvasWidth, canvasHeight, TOP_PADDING])
+  }, [layout, canvasWidth, canvasHeight, TOP_PADDING, LEFT_LABEL_W])
 
   // ─── Centrage sur la personne la plus basse (focal)
   const centerOnFocal = useCallback((animate = true) => {
@@ -127,12 +133,12 @@ export default function FamilyTree({
     const rect = wrapper.getBoundingClientRect()
     const currentScale = transformRef.current?.instance?.transformState?.scale || 1
     const scale = Math.max(currentScale, 0.6)
-    const targetX = rect.width / 2 - (pos.x + NODE_W / 2) * scale
+    const targetX = rect.width / 2 - (pos.x + LEFT_LABEL_W + NODE_W / 2) * scale
     const targetY = rect.height / 2 - (pos.y + TOP_PADDING + NODE_H / 2) * scale
     transformRef.current?.setTransform(targetX, targetY, scale, 600)
     const t = setTimeout(() => onCenterDone?.(), 650)
     return () => clearTimeout(t)
-  }, [centerTargetId, layout, onCenterDone, TOP_PADDING])
+  }, [centerTargetId, layout, onCenterDone, TOP_PADDING, LEFT_LABEL_W])
 
   // ─── Sélection rectangulaire
   const [selStart, setSelStart] = useState<{ x: number; y: number } | null>(null)
@@ -194,7 +200,7 @@ export default function FamilyTree({
 
     const newSelection = new Set(selectedIds)
     for (const [id, pos] of layout.positions) {
-      const nodeX = pos.x * scale + positionX
+      const nodeX = (pos.x + LEFT_LABEL_W) * scale + positionX
       const nodeY = (pos.y + TOP_PADDING) * scale + positionY
       const nodeW = NODE_W * scale
       const nodeH = NODE_H * scale
@@ -207,7 +213,7 @@ export default function FamilyTree({
     }
     onSelectionChange?.(newSelection)
     setSelStart(null); setSelEnd(null); setDidDrag(false)
-  }, [selectionMode, selStart, selEnd, didDrag, selectedIds, layout, TOP_PADDING, onSelectionChange])
+  }, [selectionMode, selStart, selEnd, didDrag, selectedIds, layout, TOP_PADDING, LEFT_LABEL_W, onSelectionChange])
 
   return (
     <div className="relative w-full h-full bg-parchment-100 overflow-hidden rounded-xl" ref={wrapperRef}>
@@ -357,59 +363,124 @@ export default function FamilyTree({
             height={canvasHeight}
             style={{ overflow: 'visible' }}
           >
-            {layout.coupleEdges.map((edge, i) => (
-              <g key={`couple-${i}`}>
+            {/* Bandes de générations : lignes horizontales de séparation très pâles.
+                Une ligne au-dessus de chaque génération (depth >= 1), traversant
+                tout le canvas, pour marquer la frontière avec la génération inférieure. */}
+            {layout.generations
+              .filter(g => g.depth >= 1)
+              .map(gen => {
+                const sepY = gen.yTop + TOP_PADDING - 35
+                return (
+                  <line
+                    key={`gen-sep-${gen.depth}`}
+                    x1={0} y1={sepY}
+                    x2={canvasWidth} y2={sepY}
+                    stroke="#D7C9A7"
+                    strokeWidth={1}
+                    strokeDasharray="2 6"
+                    opacity={0.6}
+                  />
+                )
+              })}
+
+            {/* Tout le reste (arêtes + couples + cousins) est décalé de LEFT_LABEL_W */}
+            <g transform={`translate(${LEFT_LABEL_W}, 0)`}>
+              {layout.coupleEdges.map((edge, i) => (
+                <g key={`couple-${i}`}>
+                  <line
+                    x1={edge.x1} y1={edge.y1 + TOP_PADDING}
+                    x2={edge.x2} y2={edge.y2 + TOP_PADDING}
+                    stroke="#B8A07A"
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                  />
+                  <circle cx={edge.midX} cy={edge.y1 + TOP_PADDING} r={3} fill="#B8A07A" />
+                </g>
+              ))}
+
+              {layout.parentEdges.map((edge, i) => (
                 <line
+                  key={`parent-${i}`}
                   x1={edge.x1} y1={edge.y1 + TOP_PADDING}
                   x2={edge.x2} y2={edge.y2 + TOP_PADDING}
-                  stroke="#B8A07A"
-                  strokeWidth={2.5}
+                  stroke="#C7B59A"
+                  strokeWidth={1.6}
+                  strokeDasharray="5 4"
                   strokeLinecap="round"
                 />
-                <circle cx={edge.midX} cy={edge.y1 + TOP_PADDING} r={3} fill="#B8A07A" />
-              </g>
-            ))}
+              ))}
 
-            {layout.parentEdges.map((edge, i) => (
-              <line
-                key={`parent-${i}`}
-                x1={edge.x1} y1={edge.y1 + TOP_PADDING}
-                x2={edge.x2} y2={edge.y2 + TOP_PADDING}
-                stroke="#C7B59A"
-                strokeWidth={1.6}
-                strokeDasharray="5 4"
-                strokeLinecap="round"
-              />
-            ))}
-
-            {/* Liens cousin : pointillés terracotta horizontaux */}
-            {layout.cousinEdges.map((edge, i) => (
-              <g key={`cousin-${i}`}>
-                <line
-                  x1={edge.x1} y1={edge.y1 + TOP_PADDING}
-                  x2={edge.x2} y2={edge.y2 + TOP_PADDING}
-                  stroke="#A0522D"
-                  strokeWidth={1.5}
-                  strokeDasharray="3 5"
-                  strokeLinecap="round"
-                  opacity={0.7}
-                />
-                {/* Petit label "cousin" à mi-chemin */}
-                <text
-                  x={(edge.x1 + edge.x2) / 2}
-                  y={(edge.y1 + edge.y2) / 2 + TOP_PADDING - 6}
-                  textAnchor="middle"
-                  fontFamily="Georgia, serif"
-                  fontSize="9"
-                  fontStyle="italic"
-                  fill="#A0522D"
-                  opacity={0.85}
-                >
-                  cousin·s
-                </text>
-              </g>
-            ))}
+              {/* Liens cousin : pointillés terracotta horizontaux */}
+              {layout.cousinEdges.map((edge, i) => (
+                <g key={`cousin-${i}`}>
+                  <line
+                    x1={edge.x1} y1={edge.y1 + TOP_PADDING}
+                    x2={edge.x2} y2={edge.y2 + TOP_PADDING}
+                    stroke="#A0522D"
+                    strokeWidth={1.5}
+                    strokeDasharray="3 5"
+                    strokeLinecap="round"
+                    opacity={0.7}
+                  />
+                  <text
+                    x={(edge.x1 + edge.x2) / 2}
+                    y={(edge.y1 + edge.y2) / 2 + TOP_PADDING - 6}
+                    textAnchor="middle"
+                    fontFamily="Georgia, serif"
+                    fontSize="9"
+                    fontStyle="italic"
+                    fill="#A0522D"
+                    opacity={0.85}
+                  >
+                    cousin·s
+                  </text>
+                </g>
+              ))}
+            </g>
           </svg>
+
+          {/* Étiquettes de génération — à gauche du canvas, chiffre en Playfair
+              italique + bouton couronne optionnel. */}
+          {layout.generations.map(gen => {
+            const bandCenterY = gen.yTop + TOP_PADDING + NODE_H / 2
+            const hasRoyals = gen.royalCount > 0
+            const kingdomsText = Object.entries(gen.royalsByKingdom)
+              .filter(([, ids]) => (ids?.length ?? 0) > 0)
+              .map(([k, ids]) => `${ids!.length} du ${k}`)
+              .join(', ')
+            return (
+              <div
+                key={`gen-label-${gen.depth}`}
+                className="absolute pointer-events-none select-none"
+                style={{
+                  left: 0,
+                  top: bandCenterY - 40,
+                  width: LEFT_LABEL_W,
+                  height: 80,
+                  textAlign: 'center',
+                }}
+              >
+                <div
+                  className="font-display italic text-parchment-500/70 leading-none"
+                  style={{ fontSize: '42px', letterSpacing: '-0.02em' }}
+                  title={gen.depth === 0 ? "Génération N (vous)" : `${gen.depth}ᵉ génération d'ancêtres`}
+                >
+                  {gen.label}
+                </div>
+                {hasRoyals && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenRoyalGeneration?.(gen)}
+                    className="pointer-events-auto mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-royal-gold-light hover:bg-royal-gold hover:text-white border border-royal-gold/40 text-royal-gold-dark text-[10px] font-bold shadow-warm-sm transition-colors"
+                    title={`Voir les ancêtres royaux de cette génération : ${kingdomsText}`}
+                  >
+                    <Crown className="w-2.5 h-2.5" />
+                    <span>{gen.royalCount}</span>
+                  </button>
+                )}
+              </div>
+            )
+          })}
 
           {persons.map(person => {
             const pos = layout.positions.get(person.id)
@@ -419,7 +490,7 @@ export default function FamilyTree({
                 key={person.id}
                 className="tree-node"
                 style={{
-                  left: pos.x,
+                  left: pos.x + LEFT_LABEL_W,
                   top: pos.y + TOP_PADDING,
                   width: NODE_W,
                   height: NODE_H,
