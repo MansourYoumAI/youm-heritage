@@ -5,7 +5,8 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { computeLayout, NODE_W, NODE_H, type GenerationBand } from '@/lib/treeLayout'
 import PersonNode from './PersonNode'
-import { HelpCircle, X, Crown, ScrollText, UserPlus, ImageDown, Loader2 } from 'lucide-react'
+import { HelpCircle, X, Crown, ScrollText, UserPlus, ImageDown, Loader2, ArrowRight } from 'lucide-react'
+import RoyalCrown from '@/components/icons/RoyalCrown'
 import { cn } from '@/lib/utils'
 import { useAdminMode } from '@/lib/useAdminMode'
 
@@ -74,10 +75,12 @@ export default function FamilyTree({
     [persons, relationships, focalId]
   )
 
-  // Bande à gauche réservée aux étiquettes de génération (chiffre + couronne).
-  const LEFT_LABEL_W = 240
-  // Bande à droite pour la frise historique.
-  const RIGHT_TIMELINE_W = 220
+  // Bande à gauche : étiquettes de génération (gauche) + repères historiques (droite).
+  const LEFT_LABEL_W = 380
+  // La partie "Génération X / X royaux" prend la moitié gauche.
+  const LEFT_LABELS_PART = 180
+  // Marge droite minimale (plus de frise historique à droite).
+  const RIGHT_TIMELINE_W = 40
   const treeContentW = Math.max(layout.width, 800)
   const canvasWidth = treeContentW + LEFT_LABEL_W + RIGHT_TIMELINE_W
   const treeHeight = Math.max(layout.height, 600)
@@ -110,8 +113,8 @@ export default function FamilyTree({
     if (!wrapper) return
     const rect = wrapper.getBoundingClientRect()
 
-    // Hauteur voulue sur l'écran : ~4 générations max
-    const visibleGens = 4
+    // Hauteur voulue sur l'écran : ~7 générations (dézoom confortable comme la vue d'aperçu)
+    const visibleGens = 7
     const neededHeight = visibleGens * (NODE_H + 70) + TOP_PADDING
     // Largeur voulue : centrée sur l'axe focal, au moins 3 cartes
     const neededWidth = Math.max(canvasWidth * 0.65, 3 * (NODE_W + 36) + LEFT_LABEL_W + RIGHT_TIMELINE_W)
@@ -249,6 +252,32 @@ export default function FamilyTree({
 
   return (
     <div className="relative w-full h-full bg-parchment-100 overflow-hidden rounded-xl" ref={wrapperRef}>
+      {/* ─── Titre toujours visible : overlay flottant centré en haut, hors du canvas pan/zoom ─── */}
+      <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none pt-5 pb-3 bg-gradient-to-b from-parchment-100 via-parchment-100/95 to-transparent">
+        <h1
+          className="text-center font-display italic font-bold leading-none"
+          style={{
+            fontSize: 'clamp(28px, 3.6vw, 56px)',
+            background: 'linear-gradient(180deg, #E8B547 0%, #8B6214 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            letterSpacing: '0.01em',
+          }}
+        >
+          Arbre généalogique de la famille Youm
+        </h1>
+        {/* Ornement : trait d'or + losange central */}
+        <div className="flex items-center justify-center gap-2 mt-2">
+          <span className="w-32 h-px bg-royal-gold/50" />
+          <span
+            className="w-2 h-2 rotate-45"
+            style={{ backgroundColor: '#C4922A', opacity: 0.75 }}
+          />
+          <span className="w-32 h-px bg-royal-gold/50" />
+        </div>
+      </div>
+
       <div className={cn("absolute top-3 right-3 z-20 flex flex-col items-end gap-1.5", hideTopActions && "hidden")}>
         {isAdmin && onAddMember && (
           <button
@@ -395,39 +424,7 @@ export default function FamilyTree({
             height={canvasHeight}
             style={{ overflow: 'visible' }}
           >
-            {/* Titre doré au-dessus de l'arbre */}
-            <text
-              x={canvasWidth / 2}
-              y={70}
-              textAnchor="middle"
-              fontFamily="var(--font-playfair, 'Playfair Display', Georgia, serif)"
-              fontSize="38"
-              fontStyle="italic"
-              fontWeight="700"
-              fill="url(#youm-gold-gradient)"
-              style={{ letterSpacing: '0.01em' }}
-            >
-              Arbre généalogique de la famille Youm
-            </text>
-            {/* Petite ornementation sous le titre : ligne dorée + losange central */}
-            <g>
-              <line
-                x1={canvasWidth / 2 - 180} y1={95}
-                x2={canvasWidth / 2 - 14} y2={95}
-                stroke="#C4922A" strokeWidth={1.1} opacity={0.6}
-              />
-              <line
-                x1={canvasWidth / 2 + 14} y1={95}
-                x2={canvasWidth / 2 + 180} y2={95}
-                stroke="#C4922A" strokeWidth={1.1} opacity={0.6}
-              />
-              <polygon
-                points={`${canvasWidth / 2},89 ${canvasWidth / 2 + 7},95 ${canvasWidth / 2},101 ${canvasWidth / 2 - 7},95`}
-                fill="#C4922A" opacity={0.75}
-              />
-            </g>
-
-            {/* Dégradé or réutilisable */}
+            {/* Dégradé or réutilisable (le titre est désormais HTML en overlay) */}
             <defs>
               <linearGradient id="youm-gold-gradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#E8B547" />
@@ -533,7 +530,7 @@ export default function FamilyTree({
                 style={{
                   left: 0,
                   top: bandCenterY - 40,
-                  width: LEFT_LABEL_W - 60, // marge d'air plus grosse avec l'arbre
+                  width: LEFT_LABELS_PART,
                   height: 90,
                   textAlign: 'center',
                 }}
@@ -549,10 +546,11 @@ export default function FamilyTree({
                   <button
                     type="button"
                     onClick={() => onOpenRoyalGeneration?.(gen)}
-                    className="pointer-events-auto mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-royal-gold text-white hover:bg-royal-gold-dark border border-royal-gold-dark text-[12px] font-display italic font-bold shadow-warm-md transition-all hover:scale-105"
+                    className="pointer-events-auto mt-2 inline-flex items-center gap-1.5 font-display italic font-bold hover:underline hover:scale-[1.03] transition-transform"
+                    style={{ color: '#6B4A0F', fontSize: '20px' }}
                     title={`Voir les ancêtres royaux de cette génération : ${kingdomsText}`}
                   >
-                    <Crown className="w-3.5 h-3.5" fill="currentColor" />
+                    <RoyalCrown className="w-5 h-5" />
                     <span>{gen.royalCount} roya{gen.royalCount > 1 ? 'ux' : 'l'}</span>
                   </button>
                 )}
@@ -560,14 +558,20 @@ export default function FamilyTree({
             )
           })}
 
-          {/* ─── Frise historique à droite ─── */}
+          {/* ─── Repères historiques carmin à GAUCHE (entre labels Génération et arbre) ─── */}
           {(() => {
+            const CARMINE = '#B91C1C'
+            const CARMINE_SOFT = '#991B1B'
             const HISTORY_EVENTS = [
               { year: '1547', text: 'Naissance du Cayor', personId: '55b8dc54-33d6-4b7f-ae44-1492ed0a3002', big: true },
               { year: '1864', text: 'Le Cayor devient musulman', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', big: false, yOffset: -NODE_H / 2 - 20 },
               { year: '1883', text: 'Protectorat français du Baol', personId: null, big: false, yOffset: NODE_H / 2 - 10 },
               { year: '1886', text: 'Fin du Cayor', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', big: true, yOffset: NODE_H + 30 },
             ] as const
+
+            // Zone horizontale réservée aux repères : entre les labels (LEFT_LABELS_PART) et l'arbre (LEFT_LABEL_W).
+            const markerLeft = LEFT_LABELS_PART + 8
+            const markerWidth = LEFT_LABEL_W - LEFT_LABELS_PART - 16 // -arrow space
 
             return HISTORY_EVENTS.map((ev, i) => {
               let anchorY: number | null = null
@@ -581,27 +585,40 @@ export default function FamilyTree({
               }
               const yOffset = ('yOffset' in ev && typeof ev.yOffset === 'number') ? ev.yOffset : 0
               const finalY = anchorY + yOffset
-              const yearSize = ev.big ? 24 : 18
-              const textSize = ev.big ? 15 : 12
+              const yearSize = ev.big ? 22 : 15
+              const textSize = ev.big ? 14 : 11
               return (
                 <div
                   key={`history-${i}`}
-                  className="absolute pointer-events-none select-none flex items-baseline gap-2"
+                  className="absolute pointer-events-none select-none flex items-center gap-1.5"
                   style={{
-                    left: canvasWidth - RIGHT_TIMELINE_W + 20,
-                    top: finalY - yearSize / 2,
-                    width: RIGHT_TIMELINE_W - 32,
+                    left: markerLeft,
+                    top: finalY - yearSize / 2 - 2,
+                    width: markerWidth,
+                    color: CARMINE,
                   }}
                 >
-                  <span
-                    className="font-display italic text-royal-gold-dark font-bold flex-shrink-0"
-                    style={{ fontSize: `${yearSize}px` }}
-                  >
-                    {ev.year}
-                  </span>
-                  <span className={`font-display italic ${ev.big ? 'text-heritage-ink font-semibold' : 'text-heritage-brown'} leading-tight`} style={{ fontSize: `${textSize}px` }}>
-                    {ev.text}
-                  </span>
+                  <div className="flex-1 min-w-0 text-right">
+                    <div
+                      className="font-display italic font-bold leading-tight"
+                      style={{ fontSize: `${yearSize}px`, color: CARMINE_SOFT }}
+                    >
+                      {ev.year}
+                    </div>
+                    <div
+                      className="font-display italic leading-tight"
+                      style={{ fontSize: `${textSize}px`, color: CARMINE, opacity: 0.95 }}
+                    >
+                      {ev.text}
+                    </div>
+                  </div>
+                  <ArrowRight
+                    className="flex-shrink-0"
+                    style={{ color: CARMINE, opacity: 0.9 }}
+                    strokeWidth={2.2}
+                    width={ev.big ? 20 : 15}
+                    height={ev.big ? 20 : 15}
+                  />
                 </div>
               )
             })

@@ -123,10 +123,10 @@ export default function PersonNode({
               {person.royal_title}
             </span>
           )}
-          <p className="font-display text-[17px] font-bold text-heritage-ink leading-[1.15] break-words hyphens-auto w-full">
+          <p className="font-display text-[21px] font-bold text-heritage-ink leading-[1.1] break-words hyphens-auto w-full">
             {person.first_name}
           </p>
-          <p className="font-display text-[17px] font-bold text-heritage-ink leading-[1.15] truncate w-full">
+          <p className="font-display text-[21px] font-bold text-heritage-ink leading-[1.1] truncate w-full">
             {person.last_name}
           </p>
           {birthText && (
