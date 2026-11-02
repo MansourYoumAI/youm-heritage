@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
+import { requireAdmin } from '@/lib/adminAuth'
 
 interface Params {
   params: { id: string }
@@ -28,6 +29,8 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
+  const guard = requireAdmin()
+  if (guard) return guard
   try {
     const body = await request.json()
     const supabase = createAdminClient()
@@ -56,6 +59,8 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
+  const guard = requireAdmin()
+  if (guard) return guard
   try {
     const supabase = createAdminClient()
     const { error } = await supabase.from('persons').delete().eq('id', params.id)

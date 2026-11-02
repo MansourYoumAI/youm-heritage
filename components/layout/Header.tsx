@@ -176,8 +176,8 @@ export default function Header({}: HeaderProps) {
       {loginOpen && (
         <AdminLoginModal
           onClose={() => setLoginOpen(false)}
-          onSubmit={(pw) => {
-            const ok = enterPassword(pw)
+          onSubmit={async (pw) => {
+            const ok = await enterPassword(pw)
             if (ok) setLoginOpen(false)
             return ok
           }}

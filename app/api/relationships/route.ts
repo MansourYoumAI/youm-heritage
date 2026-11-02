@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
+import { requireAdmin } from '@/lib/adminAuth'
 
 export async function GET(request: Request) {
   try {
@@ -24,9 +25,22 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const guard = requireAdmin()
+  if (guard) return guard
   try {
     const body = await request.json()
     const supabase = createAdminClient()
+
+    // Support un seul objet OU un tableau
+    if (Array.isArray(body)) {
+      if (body.length === 0) return NextResponse.json([], { status: 201 })
+      const { data, error } = await supabase
+        .from('relationships')
+        .insert(body)
+        .select()
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json(data, { status: 201 })
+    }
 
     const { data, error } = await supabase
       .from('relationships')
@@ -42,6 +56,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const guard = requireAdmin()
+  if (guard) return guard
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')

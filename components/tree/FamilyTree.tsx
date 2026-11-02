@@ -7,6 +7,7 @@ import { computeLayout, NODE_W, NODE_H, type GenerationBand } from '@/lib/treeLa
 import PersonNode from './PersonNode'
 import { HelpCircle, X, Crown, ScrollText, UserPlus, Download, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAdminMode } from '@/lib/useAdminMode'
 
 interface FamilyTreeProps {
   persons: Person[]
@@ -58,6 +59,7 @@ export default function FamilyTree({
 }: FamilyTreeProps) {
   const transformRef = useRef<any>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const { isAdmin } = useAdminMode()
 
   const layout = useMemo(
     () => computeLayout(persons, relationships, focalId),
@@ -218,7 +220,7 @@ export default function FamilyTree({
   return (
     <div className="relative w-full h-full bg-parchment-100 overflow-hidden rounded-xl" ref={wrapperRef}>
       <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
-        {onAddMember && (
+        {isAdmin && onAddMember && (
           <button
             onClick={onAddMember}
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-normal text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors"
@@ -498,6 +500,7 @@ export default function FamilyTree({
               >
                 <PersonNode
                   person={person}
+                  isAdmin={isAdmin}
                   selected={selectedIds.has(person.id)}
                   dimmed={
                     (royalFilter && !person.is_royal) ||

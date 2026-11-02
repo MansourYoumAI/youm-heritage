@@ -215,45 +215,46 @@ export default function PersonNode({
         #{person.id.slice(0, 5)}
       </span>
 
-      {/* Bouton édition rapide — discret, en haut à gauche, ouvre le volet */}
-      <Link
-        href={`/?modifier=${person.id}`}
-        onClick={e => e.stopPropagation()}
-        title="Modifier"
-        className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-white border border-parchment-400 items-center justify-center text-heritage-brown opacity-0 group-hover:opacity-100 transition-opacity z-20 hidden md:flex hover:bg-heritage-green hover:border-heritage-green hover:text-white shadow-warm-sm"
-      >
-        <Pencil className="w-2.5 h-2.5" strokeWidth={2.5} />
-      </Link>
+      {/* Boutons d'édition — admin uniquement */}
+      {isAdmin && (
+        <>
+          <Link
+            href={`/?modifier=${person.id}`}
+            onClick={e => e.stopPropagation()}
+            title="Modifier"
+            className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-white border border-parchment-400 items-center justify-center text-heritage-brown opacity-0 group-hover:opacity-100 transition-opacity z-20 hidden md:flex hover:bg-heritage-green hover:border-heritage-green hover:text-white shadow-warm-sm"
+          >
+            <Pencil className="w-2.5 h-2.5" strokeWidth={2.5} />
+          </Link>
 
-      {/* + parents (haut) — ajoute le père et la mère d'un coup */}
-      <Link
-        href={`/?parents_of=${person.id}`}
-        onClick={e => e.stopPropagation()}
-        title="Ajouter le père et la mère"
-        className="hidden md:flex absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-parchment-400 items-center justify-center text-heritage-brown opacity-0 group-hover:opacity-100 hover:bg-heritage-green hover:border-heritage-green hover:text-white transition-all shadow-warm-sm z-20"
-      >
-        <Plus className="w-3.5 h-3.5" strokeWidth={3} />
-      </Link>
+          <Link
+            href={`/?parents_of=${person.id}`}
+            onClick={e => e.stopPropagation()}
+            title="Ajouter le père et la mère"
+            className="hidden md:flex absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-parchment-400 items-center justify-center text-heritage-brown opacity-0 group-hover:opacity-100 hover:bg-heritage-green hover:border-heritage-green hover:text-white transition-all shadow-warm-sm z-20"
+          >
+            <Plus className="w-3.5 h-3.5" strokeWidth={3} />
+          </Link>
 
-      {/* + enfant (bas) */}
-      <Link
-        href={`/?ajouter=1&child_of=${person.id}`}
-        onClick={e => e.stopPropagation()}
-        title="Ajouter un enfant"
-        className="hidden md:flex absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-parchment-400 items-center justify-center text-heritage-brown opacity-0 group-hover:opacity-100 hover:bg-heritage-green hover:border-heritage-green hover:text-white transition-all shadow-warm-sm z-20"
-      >
-        <Plus className="w-3.5 h-3.5" strokeWidth={3} />
-      </Link>
+          <Link
+            href={`/?ajouter=1&child_of=${person.id}`}
+            onClick={e => e.stopPropagation()}
+            title="Ajouter un enfant"
+            className="hidden md:flex absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-parchment-400 items-center justify-center text-heritage-brown opacity-0 group-hover:opacity-100 hover:bg-heritage-green hover:border-heritage-green hover:text-white transition-all shadow-warm-sm z-20"
+          >
+            <Plus className="w-3.5 h-3.5" strokeWidth={3} />
+          </Link>
 
-      {/* + conjoint (droite) */}
-      <Link
-        href={`/?ajouter=1&spouse_of=${person.id}`}
-        onClick={e => e.stopPropagation()}
-        title="Ajouter un(e) conjoint(e)"
-        className="hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full bg-white border-2 border-parchment-400 items-center justify-center text-heritage-brown opacity-0 group-hover:opacity-100 hover:bg-terracotta-500 hover:border-terracotta-500 hover:text-white transition-all shadow-warm-sm z-20"
-      >
-        <Plus className="w-3.5 h-3.5" strokeWidth={3} />
-      </Link>
+          <Link
+            href={`/?ajouter=1&spouse_of=${person.id}`}
+            onClick={e => e.stopPropagation()}
+            title="Ajouter un(e) conjoint(e)"
+            className="hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full bg-white border-2 border-parchment-400 items-center justify-center text-heritage-brown opacity-0 group-hover:opacity-100 hover:bg-terracotta-500 hover:border-terracotta-500 hover:text-white transition-all shadow-warm-sm z-20"
+          >
+            <Plus className="w-3.5 h-3.5" strokeWidth={3} />
+          </Link>
+        </>
+      )}
     </div>
   )
 }

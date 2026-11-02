@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
+import { requireAdmin } from '@/lib/adminAuth'
 
 const DELETE_PASSWORD = process.env.DELETE_PASSWORD || 'mansour'
 
@@ -7,6 +8,8 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } },
 ) {
+  const guard = requireAdmin()
+  if (guard) return guard
   try {
     const { password } = await request.json()
 

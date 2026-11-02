@@ -186,19 +186,19 @@ export default function PersonForm({ person, mode, onSaved }: PersonFormProps) {
     if (!person?.id) return
     if (!confirm('Supprimer ce lien familial ?')) return
 
-    let query
-    if (type === 'parent') {
-      query = supabase.from('relationships').delete()
-        .eq('type', 'parent-enfant')
-        .eq('person1_id', relatedId)
-        .eq('person2_id', person.id)
-    } else {
-      query = supabase.from('relationships').delete()
-        .in('type', ['mariage', 'union'])
-        .or(`and(person1_id.eq.${person.id},person2_id.eq.${relatedId}),and(person1_id.eq.${relatedId},person2_id.eq.${person.id})`)
+    const body = type === 'parent'
+      ? { type: 'parent-enfant', person1_id: relatedId, person2_id: person.id }
+      : { type: ['mariage', 'union'], person1_id: person.id, person2_id: relatedId, bidirectional: true }
+    const res = await fetch('/api/relationships/delete-filter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      alert(data.error || 'Impossible de supprimer le lien (mode admin requis).')
+      return
     }
-
-    await query
     setCurrentRelations(prev => ({
       parents: type === 'parent' ? prev.parents.filter(p => p.id !== relatedId) : prev.parents,
       spouses: type === 'spouse' ? prev.spouses.filter(p => p.id !== relatedId) : prev.spouses,
@@ -250,18 +250,28 @@ export default function PersonForm({ person, mode, onSaved }: PersonFormProps) {
     let personId: string | undefined = person?.id
 
     if (mode === 'edit' && personId) {
-      const { error: updateErr } = await supabase
-        .from('persons')
-        .update({ ...payload, updated_at: new Date().toISOString() })
-        .eq('id', personId)
-      if (updateErr) { setError(updateErr.message); submittingRef.current = false; setSaving(false); return }
+      const res = await fetch(`/api/persons/${personId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setError(d.error || 'Mise à jour échouée (mode admin requis).')
+        submittingRef.current = false; setSaving(false); return
+      }
     } else {
-      const { data: created, error: insertErr } = await supabase
-        .from('persons')
-        .insert(payload)
-        .select()
-        .single()
-      if (insertErr) { setError(insertErr.message); submittingRef.current = false; setSaving(false); return }
+      const res = await fetch('/api/persons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setError(d.error || 'Création échouée (mode admin requis).')
+        submittingRef.current = false; setSaving(false); return
+      }
+      const created = await res.json()
       personId = created.id
     }
 
@@ -282,7 +292,11 @@ export default function PersonForm({ person, mode, onSaved }: PersonFormProps) {
       }
 
       if (relsToInsert.length > 0) {
-        await supabase.from('relationships').insert(relsToInsert)
+        await fetch('/api/relationships', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(relsToInsert),
+        })
       }
     }
 

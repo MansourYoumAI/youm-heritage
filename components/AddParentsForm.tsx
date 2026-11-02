@@ -51,42 +51,44 @@ export default function AddParentsForm({ childId, onSaved }: AddParentsFormProps
     submittingRef.current = true
     setSaving(true)
 
+    async function createPerson(payload: Record<string, unknown>): Promise<string> {
+      const res = await fetch('/api/persons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw new Error(d.error || 'Création échouée (mode admin requis).')
+      }
+      const data = await res.json()
+      return data.id
+    }
+
     try {
       // 1. Créer le(s) parent(s)
       let fatherId: string | undefined
       let motherId: string | undefined
 
       if (hasFather) {
-        const { data, error: err } = await supabase
-          .from('persons')
-          .insert({
-            first_name: fatherFirst.trim(),
-            last_name: fatherLast.trim(),
-            gender: 'homme',
-            birth_date: fatherYear.trim() || null,
-            is_royal: false,
-          })
-          .select()
-          .single()
-        if (err) throw err
-        fatherId = data.id
+        fatherId = await createPerson({
+          first_name: fatherFirst.trim(),
+          last_name: fatherLast.trim(),
+          gender: 'homme',
+          birth_date: fatherYear.trim() || null,
+          is_royal: false,
+        })
       }
 
       if (hasMother) {
-        const { data, error: err } = await supabase
-          .from('persons')
-          .insert({
-            first_name: motherFirst.trim(),
-            last_name: motherLast.trim(),
-            maiden_name: motherMaiden.trim() || null,
-            gender: 'femme',
-            birth_date: motherYear.trim() || null,
-            is_royal: false,
-          })
-          .select()
-          .single()
-        if (err) throw err
-        motherId = data.id
+        motherId = await createPerson({
+          first_name: motherFirst.trim(),
+          last_name: motherLast.trim(),
+          maiden_name: motherMaiden.trim() || null,
+          gender: 'femme',
+          birth_date: motherYear.trim() || null,
+          is_royal: false,
+        })
       }
 
       // 2. Relations parent-enfant + mariage entre les deux parents
@@ -96,7 +98,17 @@ export default function AddParentsForm({ childId, onSaved }: AddParentsFormProps
       if (fatherId && motherId) {
         rels.push({ person1_id: fatherId, person2_id: motherId, type: 'mariage' })
       }
-      if (rels.length > 0) await supabase.from('relationships').insert(rels)
+      if (rels.length > 0) {
+        const resRel = await fetch('/api/relationships', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rels),
+        })
+        if (!resRel.ok) {
+          const d = await resRel.json().catch(() => ({}))
+          throw new Error(d.error || 'Liens parent-enfant non créés.')
+        }
+      }
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('youm-data-updated'))

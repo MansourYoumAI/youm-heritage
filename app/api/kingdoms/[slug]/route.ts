@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
+import { requireAdmin } from '@/lib/adminAuth'
 
 const EDIT_PASSWORD = process.env.DELETE_PASSWORD || 'mansour'
 
@@ -36,6 +37,8 @@ export async function PUT(
   request: Request,
   { params }: { params: { slug: string } },
 ) {
+  const guard = requireAdmin()
+  if (guard) return guard
   try {
     const { slug } = params
     if (!VALID_SLUGS.has(slug)) {

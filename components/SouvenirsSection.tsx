@@ -100,8 +100,12 @@ export default function SouvenirsSection({ personId, kingdomSlug, kingdomContext
 
   async function deleteSouvenir(id: string) {
     if (!confirm('Supprimer ce récit familial ?')) return
-    const supabase = createClient()
-    await supabase.from('souvenirs').delete().eq('id', id)
+    const res = await fetch(`/api/souvenirs/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      alert(d.error || 'Suppression impossible (mode admin requis).')
+      return
+    }
     setSouvenirs(prev => prev.filter(s => s.id !== id))
   }
 
@@ -111,12 +115,12 @@ export default function SouvenirsSection({ personId, kingdomSlug, kingdomContext
     const current = souvenir.kingdom_favorites || []
     const isFav = current.includes(slug)
     const next = isFav ? current.filter(s => s !== slug) : [...current, slug]
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('souvenirs')
-      .update({ kingdom_favorites: next })
-      .eq('id', souvenir.id)
-    if (error) return
+    const res = await fetch(`/api/souvenirs/${souvenir.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kingdom_favorites: next }),
+    })
+    if (!res.ok) return
     // Mise à jour locale + re-tri
     setSouvenirs(prev => sortForKingdom(
       prev.map(s => s.id === souvenir.id ? { ...s, kingdom_favorites: next } : s),
@@ -456,23 +460,22 @@ function SouvenirForm({ personId, kingdomSlug, existing, onSaved }: SouvenirForm
       audio_duration_seconds: audioDuration,
     }
 
-    let dbError: { message: string } | null = null
-    if (isEdit && existing) {
-      const { error: updateErr } = await supabase
-        .from('souvenirs')
-        .update(payload)
-        .eq('id', existing.id)
-      dbError = updateErr
-    } else {
-      const { error: insertErr } = await supabase.from('souvenirs').insert({
-        ...payload,
-        person_id: personId ?? null,
-        kingdom_slug: kingdomSlug ?? null,
-      })
-      dbError = insertErr
+    const url = isEdit && existing ? `/api/souvenirs/${existing.id}` : '/api/souvenirs'
+    const method = isEdit && existing ? 'PUT' : 'POST'
+    const bodyPayload = isEdit && existing
+      ? payload
+      : { ...payload, person_id: personId ?? null, kingdom_slug: kingdomSlug ?? null }
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyPayload),
+    })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Enregistrement impossible (mode admin requis).')
+      setSaving(false)
+      return
     }
-
-    if (dbError) { setError(dbError.message); setSaving(false); return }
     recorder.resetRecording()
     onSaved()
   }

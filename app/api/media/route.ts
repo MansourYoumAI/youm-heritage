@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
+import { requireAdmin } from '@/lib/adminAuth'
 
 export async function GET(request: Request) {
   try {
@@ -24,6 +25,8 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const guard = requireAdmin()
+  if (guard) return guard
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
