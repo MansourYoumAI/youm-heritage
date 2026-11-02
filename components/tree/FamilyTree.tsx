@@ -5,7 +5,7 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { computeLayout, NODE_W, NODE_H, type GenerationBand } from '@/lib/treeLayout'
 import PersonNode from './PersonNode'
-import { HelpCircle, X, Crown, ScrollText, UserPlus, Download, Loader2 } from 'lucide-react'
+import { HelpCircle, X, Crown, ScrollText, UserPlus, ImageDown, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAdminMode } from '@/lib/useAdminMode'
 
@@ -67,13 +67,15 @@ export default function FamilyTree({
   )
 
   // Bande à gauche réservée aux étiquettes de génération (chiffre + couronne).
-  const LEFT_LABEL_W = 90
+  const LEFT_LABEL_W = 160
+  // Bande à droite pour la frise historique.
+  const RIGHT_TIMELINE_W = 180
   const treeContentW = Math.max(layout.width, 800)
-  const canvasWidth = treeContentW + LEFT_LABEL_W
+  const canvasWidth = treeContentW + LEFT_LABEL_W + RIGHT_TIMELINE_W
   const treeHeight = Math.max(layout.height, 600)
   // Marge fixe au-dessus pour permettre un peu de scroll vers le haut sans
   // gaspiller la moitié du canvas en espace vide.
-  const TOP_PADDING = 120
+  const TOP_PADDING = 180 // + place pour le titre d'arbre doré
   const canvasHeight = treeHeight + TOP_PADDING
 
   // Position du focal pour le centrage initial
@@ -90,21 +92,33 @@ export default function FamilyTree({
       }
     }
     return { focalCenterX: fx, focalBottomY: fy }
-  }, [layout, canvasWidth, canvasHeight, TOP_PADDING, LEFT_LABEL_W])
+  }, [layout, canvasWidth, canvasHeight, TOP_PADDING, LEFT_LABEL_W, RIGHT_TIMELINE_W])
 
   // ─── Centrage sur la personne la plus basse (focal)
+  //
+  // Objectif : afficher par défaut le focal + ~4 générations au-dessus,
+  //            avec les cartes assez grandes pour être lisibles sans zoom.
+  //            Le canvas peut être plus large que ça (ancêtres plus hauts) ;
+  //            l'utilisateur zoome-out pour voir plus.
   const centerOnFocal = useCallback((animate = true) => {
     if (!transformRef.current) return
     const wrapper = transformRef.current?.instance?.wrapperComponent as HTMLDivElement | undefined
     if (!wrapper) return
     const rect = wrapper.getBoundingClientRect()
-    const scaleX = (rect.width * 0.92) / canvasWidth
-    const scaleY = (rect.height * 0.92) / focalBottomY
-    const scale = Math.max(0.1, Math.min(scaleX, scaleY, 1))
+
+    // Hauteur voulue sur l'écran : ~4-5 générations
+    const visibleGens = 4.5
+    const neededHeight = visibleGens * (NODE_H + 70 /* ~V_GAP */)
+    // Largeur voulue : au moins 3 cartes de large
+    const neededWidth = 3 * (NODE_W + 36 /* H_GAP */) + LEFT_LABEL_W + RIGHT_TIMELINE_W
+    const scaleY = (rect.height * 0.9) / neededHeight
+    const scaleX = (rect.width * 0.95) / neededWidth
+    const scale = Math.max(0.25, Math.min(scaleX, scaleY, 1.1))
+
     const targetX = rect.width / 2 - focalCenterX * scale
-    const targetY = rect.height - 80 - focalBottomY * scale
+    const targetY = rect.height - 100 - focalBottomY * scale
     transformRef.current?.setTransform(targetX, targetY, scale, animate ? 300 : 0)
-  }, [canvasWidth, focalCenterX, focalBottomY])
+  }, [focalCenterX, focalBottomY, LEFT_LABEL_W, RIGHT_TIMELINE_W])
 
   // Centrage initial après chaque changement de layout/focal (sans pulse)
   useEffect(() => {
@@ -219,14 +233,14 @@ export default function FamilyTree({
 
   return (
     <div className="relative w-full h-full bg-parchment-100 overflow-hidden rounded-xl" ref={wrapperRef}>
-      <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
+      <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-1.5">
         {isAdmin && onAddMember && (
           <button
             onClick={onAddMember}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-normal text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-display italic text-xs text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors"
             title="Ajouter un parent"
           >
-            <UserPlus className="w-3 h-3" />
+            <UserPlus className="w-3.5 h-3.5" />
             <span>Ajouter un parent</span>
           </button>
         )}
@@ -234,13 +248,13 @@ export default function FamilyTree({
           <button
             onClick={onDownloadPdf}
             disabled={downloadingPdf}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-normal text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors disabled:opacity-50"
-            title="Télécharger en PDF"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-display italic text-xs text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink transition-colors disabled:opacity-50"
+            title="Télécharger l'arbre"
           >
             {downloadingPdf
-              ? <Loader2 className="w-3 h-3 animate-spin" />
-              : <Download className="w-3 h-3" />}
-            <span>Télécharger en pdf</span>
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <ImageDown className="w-3.5 h-3.5" />}
+            <span>Télécharger</span>
           </button>
         )}
         <button
@@ -249,7 +263,7 @@ export default function FamilyTree({
             setLegendButtonPulse(false)
           }}
           className={cn(
-            'relative inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-normal transition-colors',
+            'relative inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-display italic text-xs transition-colors',
             legendOpen
               ? 'bg-heritage-ink text-white'
               : 'text-heritage-brown hover:bg-parchment-200/60 hover:text-heritage-ink',
@@ -272,7 +286,7 @@ export default function FamilyTree({
               />
             </>
           )}
-          <HelpCircle className="w-3 h-3 relative z-10" />
+          <HelpCircle className="w-3.5 h-3.5 relative z-10" />
           <span className="relative z-10">Légende</span>
         </button>
       </div>
@@ -365,23 +379,69 @@ export default function FamilyTree({
             height={canvasHeight}
             style={{ overflow: 'visible' }}
           >
-            {/* Bandes de générations : lignes horizontales de séparation très pâles.
-                Une ligne au-dessus de chaque génération (depth >= 1), traversant
-                tout le canvas, pour marquer la frontière avec la génération inférieure. */}
+            {/* Titre doré au-dessus de l'arbre */}
+            <text
+              x={canvasWidth / 2}
+              y={70}
+              textAnchor="middle"
+              fontFamily="var(--font-playfair, 'Playfair Display', Georgia, serif)"
+              fontSize="38"
+              fontStyle="italic"
+              fontWeight="700"
+              fill="url(#youm-gold-gradient)"
+              style={{ letterSpacing: '0.01em' }}
+            >
+              Arbre généalogique de la famille Youm
+            </text>
+            {/* Petite ornementation sous le titre : ligne dorée + losange central */}
+            <g>
+              <line
+                x1={canvasWidth / 2 - 180} y1={95}
+                x2={canvasWidth / 2 - 14} y2={95}
+                stroke="#C4922A" strokeWidth={1.1} opacity={0.6}
+              />
+              <line
+                x1={canvasWidth / 2 + 14} y1={95}
+                x2={canvasWidth / 2 + 180} y2={95}
+                stroke="#C4922A" strokeWidth={1.1} opacity={0.6}
+              />
+              <polygon
+                points={`${canvasWidth / 2},89 ${canvasWidth / 2 + 7},95 ${canvasWidth / 2},101 ${canvasWidth / 2 - 7},95`}
+                fill="#C4922A" opacity={0.75}
+              />
+            </g>
+
+            {/* Dégradé or réutilisable */}
+            <defs>
+              <linearGradient id="youm-gold-gradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#E8B547" />
+                <stop offset="100%" stopColor="#8B6214" />
+              </linearGradient>
+            </defs>
+
+            {/* Bandes de générations : ligne solide dorée très pâle avec losange central ornemental. */}
             {layout.generations
               .filter(g => g.depth >= 1)
               .map(gen => {
-                const sepY = gen.yTop + TOP_PADDING - 35
+                const sepY = gen.yTop + TOP_PADDING - 36
+                const midX = canvasWidth / 2
                 return (
-                  <line
-                    key={`gen-sep-${gen.depth}`}
-                    x1={0} y1={sepY}
-                    x2={canvasWidth} y2={sepY}
-                    stroke="#D7C9A7"
-                    strokeWidth={1}
-                    strokeDasharray="2 6"
-                    opacity={0.6}
-                  />
+                  <g key={`gen-sep-${gen.depth}`}>
+                    <line
+                      x1={LEFT_LABEL_W - 10} y1={sepY}
+                      x2={midX - 10} y2={sepY}
+                      stroke="#C4922A" strokeWidth={0.9} opacity={0.35}
+                    />
+                    <line
+                      x1={midX + 10} y1={sepY}
+                      x2={canvasWidth - RIGHT_TIMELINE_W + 10} y2={sepY}
+                      stroke="#C4922A" strokeWidth={0.9} opacity={0.35}
+                    />
+                    <polygon
+                      points={`${midX},${sepY - 5} ${midX + 5},${sepY} ${midX},${sepY + 5} ${midX - 5},${sepY}`}
+                      fill="#C4922A" opacity={0.5}
+                    />
+                  </g>
                 )
               })}
 
@@ -456,15 +516,21 @@ export default function FamilyTree({
                 className="absolute pointer-events-none select-none"
                 style={{
                   left: 0,
-                  top: bandCenterY - 40,
-                  width: LEFT_LABEL_W,
-                  height: 80,
+                  top: bandCenterY - 60,
+                  width: LEFT_LABEL_W - 28, // marge d'air avec l'arbre
+                  height: 120,
                   textAlign: 'center',
                 }}
               >
                 <div
-                  className="font-display italic text-parchment-500/70 leading-none"
-                  style={{ fontSize: '42px', letterSpacing: '-0.02em' }}
+                  className="font-display italic text-parchment-500/80 leading-tight"
+                  style={{ fontSize: '14px', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+                >
+                  Génération
+                </div>
+                <div
+                  className="font-display italic text-heritage-brown/70 leading-none"
+                  style={{ fontSize: '48px', letterSpacing: '-0.02em', marginTop: 2 }}
                   title={gen.depth === 0 ? "Génération N (vous)" : `${gen.depth}ᵉ génération d'ancêtres`}
                 >
                   {gen.label}
@@ -473,16 +539,66 @@ export default function FamilyTree({
                   <button
                     type="button"
                     onClick={() => onOpenRoyalGeneration?.(gen)}
-                    className="pointer-events-auto mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-royal-gold-light hover:bg-royal-gold hover:text-white border border-royal-gold/40 text-royal-gold-dark text-[10px] font-bold shadow-warm-sm transition-colors"
+                    className="pointer-events-auto mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-royal-gold text-white hover:bg-royal-gold-dark border border-royal-gold-dark text-[12px] font-display italic font-bold shadow-warm-md transition-all hover:scale-105"
                     title={`Voir les ancêtres royaux de cette génération : ${kingdomsText}`}
                   >
-                    <Crown className="w-2.5 h-2.5" />
-                    <span>{gen.royalCount}</span>
+                    <Crown className="w-3.5 h-3.5" fill="currentColor" />
+                    <span>{gen.royalCount} royal{gen.royalCount > 1 ? 'aux' : ''}</span>
                   </button>
                 )}
               </div>
             )
           })}
+
+          {/* ─── Frise historique à droite ─── */}
+          {(() => {
+            const HISTORY_EVENTS = [
+              { year: '1547', text: 'Naissance du Cayor', personId: '55b8dc54-33d6-4b7f-ae44-1492ed0a3002' /* Dethié Fou */ },
+              { year: '1864', text: 'Le Cayor devient musulman', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f' /* Lat Dior */ },
+              { year: '1883', text: 'Protectorat français du Baol', personId: null /* fallback Lat Dior gen - 0 */, yOffset: -NODE_H - 60 },
+              { year: '1886', text: 'Fin du Cayor', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: NODE_H + 60 },
+            ] as const
+
+            return HISTORY_EVENTS.map((ev, i) => {
+              // Essaie de trouver la position de la personne associée
+              let anchorY: number | null = null
+              if (ev.personId) {
+                const pos = layout.positions.get(ev.personId)
+                if (pos) anchorY = pos.y + TOP_PADDING + NODE_H / 2
+              }
+              // Fallback : distribution verticale régulière
+              if (anchorY == null) {
+                const span = canvasHeight - TOP_PADDING - 100
+                anchorY = TOP_PADDING + 40 + (i / Math.max(1, HISTORY_EVENTS.length - 1)) * span
+              }
+              const yOffset = ('yOffset' in ev && typeof ev.yOffset === 'number') ? ev.yOffset : 0
+              const finalY = anchorY + yOffset
+              return (
+                <div
+                  key={`history-${i}`}
+                  className="absolute pointer-events-none select-none"
+                  style={{
+                    left: canvasWidth - RIGHT_TIMELINE_W + 20,
+                    top: finalY - 24,
+                    width: RIGHT_TIMELINE_W - 32,
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="font-display italic text-royal-gold-dark font-bold"
+                      style={{ fontSize: '20px' }}
+                    >
+                      {ev.year}
+                    </span>
+                    <span className="flex-1 h-px bg-royal-gold/40" />
+                  </div>
+                  <p className="font-display italic text-heritage-brown text-[13px] leading-tight mt-0.5">
+                    {ev.text}
+                  </p>
+                </div>
+              )
+            })
+          })()}
 
           {persons.map(person => {
             const pos = layout.positions.get(person.id)
@@ -550,6 +666,13 @@ export default function FamilyTree({
           }}
         />
       )}
+
+      {/* Signature discrète en bas à droite */}
+      <div className="absolute bottom-2 right-3 z-10 pointer-events-none select-none">
+        <p className="font-display italic text-[11px] text-heritage-brown/70">
+          Réalisé par Mansour Youm, 2026
+        </p>
+      </div>
     </div>
   )
 }

@@ -1,8 +1,8 @@
 import type { Person, Relationship } from './types'
 
-export const NODE_W = 220
-export const NODE_H = 100
-export const H_GAP = 30
+export const NODE_W = 280
+export const NODE_H = 130
+export const H_GAP = 36
 // Écart minimum entre deux sous-arbres frères au même niveau.
 // Il sert de base : chaque génération au-dessus s'élargit automatiquement
 // pour absorber la totalité de ses propres ancêtres.

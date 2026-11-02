@@ -49,7 +49,7 @@ export default function Header({}: HeaderProps) {
             <Link
               href="/"
               className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors',
+                'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-display text-sm font-semibold italic transition-colors',
                 isHome
                   ? 'bg-parchment-200 text-heritage-ink'
                   : 'text-heritage-brown hover:bg-parchment-200 hover:text-heritage-ink'
@@ -62,7 +62,7 @@ export default function Header({}: HeaderProps) {
             <Link
               href="/recits"
               className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors',
+                'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-display text-sm font-semibold italic transition-colors',
                 isRoyals
                   ? 'bg-parchment-200 text-heritage-ink'
                   : 'text-heritage-brown hover:bg-parchment-200 hover:text-heritage-ink'
@@ -83,7 +83,7 @@ export default function Header({}: HeaderProps) {
                   <Link
                     href={k.href}
                     className={cn(
-                      'px-1.5 py-0.5 rounded transition-colors font-semibold',
+                      'px-1.5 py-0.5 rounded transition-colors font-display font-semibold italic text-[13px]',
                       pathname === k.href
                         ? 'bg-royal-gold-light text-royal-gold-dark'
                         : 'text-heritage-brown hover:text-heritage-ink hover:bg-parchment-100'
@@ -127,7 +127,7 @@ export default function Header({}: HeaderProps) {
             <Link
               href="/"
               className={cn(
-                'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold flex-1 justify-center',
+                'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-display text-sm font-semibold italic flex-1 justify-center',
                 isHome
                   ? 'bg-parchment-200 text-heritage-ink'
                   : 'bg-parchment-100 text-heritage-brown'
@@ -139,7 +139,7 @@ export default function Header({}: HeaderProps) {
             <Link
               href="/recits"
               className={cn(
-                'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold flex-1 justify-center',
+                'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-display text-sm font-semibold italic flex-1 justify-center',
                 isRoyals
                   ? 'bg-parchment-200 text-heritage-ink'
                   : 'bg-parchment-100 text-heritage-brown'

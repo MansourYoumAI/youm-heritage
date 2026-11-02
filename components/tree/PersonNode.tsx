@@ -45,6 +45,9 @@ export default function PersonNode({
         dimmed && 'opacity-20',
       )}
     >
+      {/* Serpent doré animé autour des cartes royales */}
+      {person.is_royal && <span className="royal-snake-border" aria-hidden="true" />}
+
       {/* Pulse doré pour mettre en évidence le focal au premier chargement */}
       {pulsing && (
         <>
@@ -64,7 +67,7 @@ export default function PersonNode({
       <button
         onClick={onClick}
         className={cn(
-          'w-full h-full rounded-2xl flex flex-row items-center px-2.5 py-2 gap-2.5',
+          'w-full h-full rounded-2xl flex flex-row items-center px-3 py-2.5 gap-3',
           'border-2 transition-all duration-200 bg-white',
           'hover:shadow-warm-lg hover:-translate-y-0.5',
           'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-terracotta-500',
@@ -77,12 +80,12 @@ export default function PersonNode({
                 : 'border-parchment-400 shadow-warm-sm'
         )}
         style={person.is_royal && !selected && !highlighted ? {
-          boxShadow: '0 2px 12px rgba(196, 146, 42, 0.25)',
+          boxShadow: '0 2px 14px rgba(196, 146, 42, 0.28)',
         } : undefined}
       >
-        {/* Avatar à gauche */}
+        {/* Avatar à gauche — plus grand */}
         <div className={cn(
-          'flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center',
+          'flex-shrink-0 w-[82px] h-[82px] rounded-xl overflow-hidden flex items-center justify-center',
           'border-2',
           person.is_royal ? 'border-royal-gold' : 'border-parchment-400'
         )}>
@@ -90,13 +93,13 @@ export default function PersonNode({
             <Image
               src={person.profile_picture_url}
               alt={`${person.first_name} ${person.last_name}`}
-              width={64}
-              height={64}
+              width={82}
+              height={82}
               className="w-full h-full object-cover"
             />
           ) : (
             <div className={cn(
-              'w-full h-full flex items-center justify-center text-base font-bold',
+              'w-full h-full flex items-center justify-center font-display italic text-2xl font-bold',
               person.is_royal
                 ? 'bg-royal-gold-light text-royal-gold-dark'
                 : person.gender === 'homme'
@@ -110,26 +113,24 @@ export default function PersonNode({
           )}
         </div>
 
-        {/* Bloc texte à droite, aligné à gauche */}
-        <div className="flex-1 min-w-0 text-left flex flex-col items-start gap-0.5">
-          {/* Bulle du titre royal — au-dessus du prénom */}
+        {/* Bloc texte à droite — polices élargies */}
+        <div className="flex-1 min-w-0 text-left flex flex-col items-start gap-1">
           {person.is_royal && person.royal_title && (
             <span
-              className="inline-block max-w-full px-1.5 py-0.5 rounded-full bg-royal-gold-light text-royal-gold-dark text-[9px] font-bold uppercase tracking-tight leading-tight border border-royal-gold/40 truncate"
+              className="inline-block max-w-full px-2 py-0.5 rounded-full bg-royal-gold-light text-royal-gold-dark text-[10px] font-bold uppercase tracking-tight leading-tight border border-royal-gold/40 truncate"
               title={person.royal_title}
             >
               {person.royal_title}
             </span>
           )}
-          {/* Prénom — gros, peut wrapper sur 2 lignes pour les noms longs */}
-          <p className="text-[13px] font-bold text-heritage-ink leading-[1.15] break-words hyphens-auto w-full">
+          <p className="font-display text-[17px] font-bold text-heritage-ink leading-[1.15] break-words hyphens-auto w-full">
             {person.first_name}
           </p>
-          <p className="text-[11px] font-semibold text-heritage-brown leading-tight truncate w-full">
+          <p className="font-display text-[17px] font-bold text-heritage-ink leading-[1.15] truncate w-full">
             {person.last_name}
           </p>
           {birthText && (
-            <p className="text-[10px] font-medium text-parchment-500 leading-tight truncate w-full">
+            <p className="text-[11px] font-medium text-parchment-500 leading-tight truncate w-full italic">
               {birthText}
             </p>
           )}
@@ -174,16 +175,13 @@ export default function PersonNode({
         </>
       )}
 
-      {/* Couronne (lignée royale) — vraie illustration plate dorée sur fond jaune vif */}
+      {/* Couronne (lignée royale) — illustration plate dorée + léger pulse */}
       {person.is_royal && (
         <div
-          className="absolute -top-2.5 -right-2.5 w-8 h-8 rounded-full flex items-center justify-center z-10 pointer-events-none border-2 border-white"
-          style={{
-            backgroundColor: '#FFD43B',
-            boxShadow: '0 2px 8px rgba(196, 146, 42, 0.5), 0 0 0 1px rgba(139, 98, 20, 0.3)',
-          }}
+          className="royal-crown-pulse absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center z-10 pointer-events-none border-2 border-white"
+          style={{ backgroundColor: '#FFD43B' }}
         >
-          <RoyalCrown className="w-5 h-5" />
+          <RoyalCrown className="w-6 h-6" />
         </div>
       )}
 

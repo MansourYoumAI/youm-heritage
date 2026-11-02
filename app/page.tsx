@@ -8,6 +8,9 @@ import Header from '@/components/layout/Header'
 import FamilyTree from '@/components/tree/FamilyTree'
 import PersonPreviewPanel from '@/components/PersonPreviewPanel'
 import BulkDeleteModal from '@/components/BulkDeleteModal'
+import RoyalGenerationModal from '@/components/RoyalGenerationModal'
+import ProfileModal from '@/components/ProfileModal'
+import type { GenerationBand } from '@/lib/treeLayout'
 import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { createClient } from '@/lib/supabase'
 import { findFamilyFocal, cn } from '@/lib/utils'
@@ -61,6 +64,10 @@ export default function HomePage() {
     params.set('ajouter', '1')
     router.push(`${pathname}?${params.toString()}`)
   }
+
+  // Modales : royaux par génération + profil personne
+  const [openGen, setOpenGen] = useState<GenerationBand | null>(null)
+  const [openProfileId, setOpenProfileId] = useState<string | null>(null)
 
 
   useEffect(() => {
@@ -291,6 +298,7 @@ export default function HomePage() {
               onAddMember={openAddDrawer}
               onDownloadPdf={downloadPdf}
               downloadingPdf={downloadingPdf}
+              onOpenRoyalGeneration={gen => setOpenGen(gen)}
             />
           </div>
         )}
@@ -333,6 +341,22 @@ export default function HomePage() {
             setSelectedPerson(null)
             setPersons(prev => prev.filter(p => p.id !== selectedPerson.id))
           }}
+        />
+      )}
+
+      {openGen && (
+        <RoyalGenerationModal
+          generation={openGen}
+          persons={persons}
+          onClose={() => setOpenGen(null)}
+          onOpenPerson={id => setOpenProfileId(id)}
+        />
+      )}
+
+      {openProfileId && (
+        <ProfileModal
+          personId={openProfileId}
+          onClose={() => setOpenProfileId(null)}
         />
       )}
 

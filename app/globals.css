@@ -278,6 +278,64 @@
   z-index: 10;
 }
 
+/* ─── Liseré doré « serpent » autour des cartes royales ─── */
+@property --royal-snake-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes royal-snake-rotate {
+  from { --royal-snake-angle: 0deg; }
+  to { --royal-snake-angle: 360deg; }
+}
+
+.royal-snake-border {
+  position: absolute;
+  inset: -3px;
+  border-radius: 18px;
+  padding: 2.5px;
+  background: conic-gradient(
+    from var(--royal-snake-angle),
+    transparent 0deg,
+    transparent 240deg,
+    rgba(255, 212, 59, 0.9) 290deg,
+    rgba(196, 146, 42, 1) 320deg,
+    rgba(255, 212, 59, 0.9) 340deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  animation: royal-snake-rotate 4.5s linear infinite;
+  z-index: 1;
+}
+
+/* Fallback pour Safari / anciennes versions qui ne supportent pas @property :
+   remplace l'animation par une rotation standard d'un gradient fixe. */
+@supports not (background: conic-gradient(from 0deg, red, blue)) {
+  .royal-snake-border { display: none; }
+}
+
+/* Pulse léger sur les icônes couronne royales */
+@keyframes royal-crown-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(196, 146, 42, 0.5), 0 0 0 1px rgba(139, 98, 20, 0.3);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 2px 14px rgba(255, 212, 59, 0.85), 0 0 0 1px rgba(139, 98, 20, 0.5), 0 0 0 4px rgba(255, 212, 59, 0.2);
+  }
+}
+
+.royal-crown-pulse {
+  animation: royal-crown-pulse 2.4s ease-in-out infinite;
+}
+
 /* Page principale — offset pour la navigation */
 .page-content {
   padding-bottom: 5rem; /* espace pour la nav mobile */
