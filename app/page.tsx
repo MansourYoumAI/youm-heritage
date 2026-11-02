@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Trash2, X, Search, Crown, Download, UserPlus, Loader2 } from 'lucide-react'
 import Header from '@/components/layout/Header'
+import Sidebar from '@/components/layout/Sidebar'
 import FamilyTree from '@/components/tree/FamilyTree'
 import PersonPreviewPanel from '@/components/PersonPreviewPanel'
 import BulkDeleteModal from '@/components/BulkDeleteModal'
@@ -68,6 +69,8 @@ export default function HomePage() {
   // Modales : royaux par génération + profil personne
   const [openGen, setOpenGen] = useState<GenerationBand | null>(null)
   const [openProfileId, setOpenProfileId] = useState<string | null>(null)
+  // Légende hoistée pour pouvoir ouvrir depuis la sidebar
+  const [legendOpen, setLegendOpen] = useState(false)
 
 
   useEffect(() => {
@@ -178,74 +181,24 @@ export default function HomePage() {
   }, [searchMatches])
 
   return (
-    <div className="flex flex-col h-screen bg-parchment-100">
-      <Header />
+    <div className="flex h-screen bg-parchment-100">
+      <Sidebar
+        treeMode
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchMatches={searchMatches}
+        onPickMatch={p => {
+          setCenterTargetId(p.id)
+          setSearchQuery('')
+        }}
+        onDownloadPdf={downloadPdf}
+        downloadingPdf={downloadingPdf}
+        onToggleLegend={() => setLegendOpen(o => !o)}
+        legendOpen={legendOpen}
+        onAddMember={openAddDrawer}
+      />
 
-      <div className="flex-1 relative min-h-0">
-        {/* Recherche flottante en haut-gauche */}
-        <div className="absolute top-3 left-3 z-30">
-          {/* 1) Recherche */}
-          <div className="relative w-44 sm:w-56">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-heritage-brown opacity-50 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Rechercher..."
-              className={cn(
-                'w-full pl-8 pr-7 py-1.5 text-xs rounded-full outline-none transition-all',
-                'placeholder:text-heritage-brown placeholder:opacity-40',
-                searchQuery
-                  ? 'bg-parchment-50 border border-parchment-400 text-heritage-ink shadow-warm-sm'
-                  : 'bg-transparent border border-transparent text-heritage-ink hover:bg-parchment-200/60 focus:bg-parchment-50 focus:border-parchment-400 focus:shadow-warm-sm',
-              )}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center text-heritage-brown hover:bg-parchment-300"
-                aria-label="Effacer la recherche"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-
-            {searchMatches && searchMatches.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-parchment-400 rounded-xl shadow-warm-xl max-h-72 overflow-y-auto z-50">
-                {searchMatches.slice(0, 12).map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      setCenterTargetId(p.id)
-                      setSearchQuery('')
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-parchment-100 transition-colors flex items-center gap-2 text-xs border-b border-parchment-200 last:border-b-0"
-                  >
-                    {p.is_royal && <Crown className="w-3 h-3 text-royal-gold flex-shrink-0" />}
-                    <span className="font-semibold text-heritage-ink truncate">
-                      {p.first_name} {p.last_name}
-                    </span>
-                    {p.maiden_name && (
-                      <span className="text-heritage-brown opacity-70 text-[10px]">
-                        née {p.maiden_name}
-                      </span>
-                    )}
-                  </button>
-                ))}
-                {searchMatches.length > 12 && (
-                  <div className="px-3 py-2 text-[10px] text-heritage-brown italic">
-                    +{searchMatches.length - 12} autre{searchMatches.length - 12 > 1 ? 's' : ''}…
-                  </div>
-                )}
-              </div>
-            )}
-            {searchMatches && searchMatches.length === 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-parchment-400 rounded-xl shadow-warm-xl px-3 py-2 text-xs text-heritage-brown italic z-50">
-                Aucun résultat
-              </div>
-            )}
-          </div>
-        </div>
+      <div className="flex-1 relative min-h-0 overflow-hidden">
         {loading ? (
           <div className="w-full h-full flex items-center justify-center">
             <div className="w-12 h-12 rounded-full border-4 border-parchment-400 border-t-terracotta-500 animate-spin" />
@@ -295,9 +248,9 @@ export default function HomePage() {
               onToggleRoyalFilter={() => setRoyalFilter(v => !v)}
               souvenirFilter={souvenirFilter}
               onToggleSouvenirFilter={() => setSouvenirFilter(v => !v)}
-              onAddMember={openAddDrawer}
-              onDownloadPdf={downloadPdf}
-              downloadingPdf={downloadingPdf}
+              hideTopActions
+              legendOpenControlled={legendOpen}
+              onLegendClose={() => setLegendOpen(false)}
               onOpenRoyalGeneration={gen => setOpenGen(gen)}
             />
           </div>

@@ -34,6 +34,11 @@ interface FamilyTreeProps {
   downloadingPdf?: boolean
   /** Ouvre le panneau des ancêtres royaux d'une génération donnée */
   onOpenRoyalGeneration?: (gen: GenerationBand) => void
+  /** Masque la rangée d'actions en haut à droite (quand une sidebar les porte) */
+  hideTopActions?: boolean
+  /** État Légende contrôlé par le parent (prime sur l'état interne) */
+  legendOpenControlled?: boolean
+  onLegendClose?: () => void
 }
 
 export default function FamilyTree({
@@ -56,6 +61,9 @@ export default function FamilyTree({
   onDownloadPdf,
   downloadingPdf = false,
   onOpenRoyalGeneration,
+  hideTopActions = false,
+  legendOpenControlled,
+  onLegendClose,
 }: FamilyTreeProps) {
   const transformRef = useRef<any>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -67,9 +75,9 @@ export default function FamilyTree({
   )
 
   // Bande à gauche réservée aux étiquettes de génération (chiffre + couronne).
-  const LEFT_LABEL_W = 160
+  const LEFT_LABEL_W = 240
   // Bande à droite pour la frise historique.
-  const RIGHT_TIMELINE_W = 180
+  const RIGHT_TIMELINE_W = 220
   const treeContentW = Math.max(layout.width, 800)
   const canvasWidth = treeContentW + LEFT_LABEL_W + RIGHT_TIMELINE_W
   const treeHeight = Math.max(layout.height, 600)
@@ -94,31 +102,30 @@ export default function FamilyTree({
     return { focalCenterX: fx, focalBottomY: fy }
   }, [layout, canvasWidth, canvasHeight, TOP_PADDING, LEFT_LABEL_W, RIGHT_TIMELINE_W])
 
-  // ─── Centrage sur la personne la plus basse (focal)
-  //
-  // Objectif : afficher par défaut le focal + ~4 générations au-dessus,
-  //            avec les cartes assez grandes pour être lisibles sans zoom.
-  //            Le canvas peut être plus large que ça (ancêtres plus hauts) ;
-  //            l'utilisateur zoome-out pour voir plus.
+  // ─── Centrage initial : montre le HAUT de l'arbre (ancêtres anciens),
+  //     avec le titre doré visible et les premières générations royales.
   const centerOnFocal = useCallback((animate = true) => {
     if (!transformRef.current) return
     const wrapper = transformRef.current?.instance?.wrapperComponent as HTMLDivElement | undefined
     if (!wrapper) return
     const rect = wrapper.getBoundingClientRect()
 
-    // Hauteur voulue sur l'écran : ~4-5 générations
-    const visibleGens = 4.5
-    const neededHeight = visibleGens * (NODE_H + 70 /* ~V_GAP */)
-    // Largeur voulue : au moins 3 cartes de large
-    const neededWidth = 3 * (NODE_W + 36 /* H_GAP */) + LEFT_LABEL_W + RIGHT_TIMELINE_W
-    const scaleY = (rect.height * 0.9) / neededHeight
-    const scaleX = (rect.width * 0.95) / neededWidth
-    const scale = Math.max(0.25, Math.min(scaleX, scaleY, 1.1))
+    // Hauteur voulue sur l'écran : ~4 générations max
+    const visibleGens = 4
+    const neededHeight = visibleGens * (NODE_H + 70) + TOP_PADDING
+    // Largeur voulue : centrée sur l'axe focal, au moins 3 cartes
+    const neededWidth = Math.max(canvasWidth * 0.65, 3 * (NODE_W + 36) + LEFT_LABEL_W + RIGHT_TIMELINE_W)
+    const scaleY = (rect.height * 0.95) / neededHeight
+    const scaleX = (rect.width * 0.98) / neededWidth
+    const scale = Math.max(0.2, Math.min(scaleX, scaleY, 1))
 
-    const targetX = rect.width / 2 - focalCenterX * scale
-    const targetY = rect.height - 100 - focalBottomY * scale
+    // Centrer horizontalement sur le milieu du canvas (axe focal)
+    const centerCanvasX = focalCenterX
+    const targetX = rect.width / 2 - centerCanvasX * scale
+    // Caler le HAUT du canvas en haut de la vue (avec un petit padding)
+    const targetY = 20 - 0 * scale
     transformRef.current?.setTransform(targetX, targetY, scale, animate ? 300 : 0)
-  }, [focalCenterX, focalBottomY, LEFT_LABEL_W, RIGHT_TIMELINE_W])
+  }, [focalCenterX, canvasWidth, LEFT_LABEL_W, RIGHT_TIMELINE_W, TOP_PADDING])
 
   // Centrage initial après chaque changement de layout/focal (sans pulse)
   useEffect(() => {
@@ -127,8 +134,17 @@ export default function FamilyTree({
     return () => { clearTimeout(t) }
   }, [layout, focalId, persons.length, centerOnFocal])
 
-  // État légende (panneau dépliable)
-  const [legendOpen, setLegendOpen] = useState(false)
+  // État légende (panneau dépliable). Si legendOpenControlled est passé par
+  // le parent (ex. sidebar), il prime sur l'état interne.
+  const [legendOpenLocal, setLegendOpenLocal] = useState(false)
+  const legendOpen = legendOpenControlled !== undefined ? legendOpenControlled : legendOpenLocal
+  const setLegendOpen = (v: boolean | ((o: boolean) => boolean)) => {
+    if (legendOpenControlled !== undefined) {
+      if (v === false || (typeof v === 'function' && !v(legendOpen))) onLegendClose?.()
+    } else {
+      setLegendOpenLocal(v as any)
+    }
+  }
   // Pulse doré sur le bouton Légende au chargement (2.5s) pour le découvrir
   const [legendButtonPulse, setLegendButtonPulse] = useState(true)
   useEffect(() => {
@@ -233,7 +249,7 @@ export default function FamilyTree({
 
   return (
     <div className="relative w-full h-full bg-parchment-100 overflow-hidden rounded-xl" ref={wrapperRef}>
-      <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-1.5">
+      <div className={cn("absolute top-3 right-3 z-20 flex flex-col items-end gap-1.5", hideTopActions && "hidden")}>
         {isAdmin && onAddMember && (
           <button
             onClick={onAddMember}
@@ -516,24 +532,18 @@ export default function FamilyTree({
                 className="absolute pointer-events-none select-none"
                 style={{
                   left: 0,
-                  top: bandCenterY - 60,
-                  width: LEFT_LABEL_W - 28, // marge d'air avec l'arbre
-                  height: 120,
+                  top: bandCenterY - 40,
+                  width: LEFT_LABEL_W - 60, // marge d'air plus grosse avec l'arbre
+                  height: 90,
                   textAlign: 'center',
                 }}
               >
                 <div
-                  className="font-display italic text-parchment-500/80 leading-tight"
-                  style={{ fontSize: '14px', letterSpacing: '0.08em', textTransform: 'uppercase' }}
-                >
-                  Génération
-                </div>
-                <div
-                  className="font-display italic text-heritage-brown/70 leading-none"
-                  style={{ fontSize: '48px', letterSpacing: '-0.02em', marginTop: 2 }}
+                  className="font-display italic text-heritage-brown/70 leading-tight whitespace-nowrap"
+                  style={{ fontSize: '28px', letterSpacing: '0.01em' }}
                   title={gen.depth === 0 ? "Génération N (vous)" : `${gen.depth}ᵉ génération d'ancêtres`}
                 >
-                  {gen.label}
+                  Génération {gen.label}
                 </div>
                 {hasRoyals && (
                   <button
@@ -543,7 +553,7 @@ export default function FamilyTree({
                     title={`Voir les ancêtres royaux de cette génération : ${kingdomsText}`}
                   >
                     <Crown className="w-3.5 h-3.5" fill="currentColor" />
-                    <span>{gen.royalCount} royal{gen.royalCount > 1 ? 'aux' : ''}</span>
+                    <span>{gen.royalCount} roya{gen.royalCount > 1 ? 'ux' : 'l'}</span>
                   </button>
                 )}
               </div>
@@ -553,48 +563,45 @@ export default function FamilyTree({
           {/* ─── Frise historique à droite ─── */}
           {(() => {
             const HISTORY_EVENTS = [
-              { year: '1547', text: 'Naissance du Cayor', personId: '55b8dc54-33d6-4b7f-ae44-1492ed0a3002' /* Dethié Fou */ },
-              { year: '1864', text: 'Le Cayor devient musulman', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f' /* Lat Dior */ },
-              { year: '1883', text: 'Protectorat français du Baol', personId: null /* fallback Lat Dior gen - 0 */, yOffset: -NODE_H - 60 },
-              { year: '1886', text: 'Fin du Cayor', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: NODE_H + 60 },
+              { year: '1547', text: 'Naissance du Cayor', personId: '55b8dc54-33d6-4b7f-ae44-1492ed0a3002', big: true },
+              { year: '1864', text: 'Le Cayor devient musulman', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', big: false, yOffset: -NODE_H / 2 - 20 },
+              { year: '1883', text: 'Protectorat français du Baol', personId: null, big: false, yOffset: NODE_H / 2 - 10 },
+              { year: '1886', text: 'Fin du Cayor', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', big: true, yOffset: NODE_H + 30 },
             ] as const
 
             return HISTORY_EVENTS.map((ev, i) => {
-              // Essaie de trouver la position de la personne associée
               let anchorY: number | null = null
               if (ev.personId) {
                 const pos = layout.positions.get(ev.personId)
                 if (pos) anchorY = pos.y + TOP_PADDING + NODE_H / 2
               }
-              // Fallback : distribution verticale régulière
               if (anchorY == null) {
                 const span = canvasHeight - TOP_PADDING - 100
                 anchorY = TOP_PADDING + 40 + (i / Math.max(1, HISTORY_EVENTS.length - 1)) * span
               }
               const yOffset = ('yOffset' in ev && typeof ev.yOffset === 'number') ? ev.yOffset : 0
               const finalY = anchorY + yOffset
+              const yearSize = ev.big ? 24 : 18
+              const textSize = ev.big ? 15 : 12
               return (
                 <div
                   key={`history-${i}`}
-                  className="absolute pointer-events-none select-none"
+                  className="absolute pointer-events-none select-none flex items-baseline gap-2"
                   style={{
                     left: canvasWidth - RIGHT_TIMELINE_W + 20,
-                    top: finalY - 24,
+                    top: finalY - yearSize / 2,
                     width: RIGHT_TIMELINE_W - 32,
                   }}
                 >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="font-display italic text-royal-gold-dark font-bold"
-                      style={{ fontSize: '20px' }}
-                    >
-                      {ev.year}
-                    </span>
-                    <span className="flex-1 h-px bg-royal-gold/40" />
-                  </div>
-                  <p className="font-display italic text-heritage-brown text-[13px] leading-tight mt-0.5">
+                  <span
+                    className="font-display italic text-royal-gold-dark font-bold flex-shrink-0"
+                    style={{ fontSize: `${yearSize}px` }}
+                  >
+                    {ev.year}
+                  </span>
+                  <span className={`font-display italic ${ev.big ? 'text-heritage-ink font-semibold' : 'text-heritage-brown'} leading-tight`} style={{ fontSize: `${textSize}px` }}>
                     {ev.text}
-                  </p>
+                  </span>
                 </div>
               )
             })
@@ -667,12 +674,6 @@ export default function FamilyTree({
         />
       )}
 
-      {/* Signature discrète en bas à droite */}
-      <div className="absolute bottom-2 right-3 z-10 pointer-events-none select-none">
-        <p className="font-display italic text-[11px] text-heritage-brown/70">
-          Réalisé par Mansour Youm, 2026
-        </p>
-      </div>
     </div>
   )
 }
