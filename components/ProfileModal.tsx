@@ -2,17 +2,42 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { X, Crown, Calendar, MapPin, ScrollText, Loader2 } from 'lucide-react'
+import { X, Crown, Calendar, MapPin, ScrollText, Loader2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, TreeDeciduous } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import type { Person, Souvenir } from '@/lib/types'
 import { formatDateFR, getInitials } from '@/lib/utils'
 
+export interface ProfileNeighbors {
+  /** Un ascendant direct (père ou mère) */
+  up?: { id: string; label: string }
+  /** Un descendant direct (enfant) */
+  down?: { id: string; label: string }
+  /** Un conjoint ou frère/sœur (voisin horizontal) */
+  left?: { id: string; label: string }
+  right?: { id: string; label: string }
+}
+
 interface ProfileModalProps {
   personId: string
   onClose: () => void
+  /** Numéro de génération depuis Mansour (0=N, 1, 2, ...) */
+  generationLabel?: string | null
+  /** Voisins pour la navigation */
+  neighbors?: ProfileNeighbors
+  /** Jump vers une autre personne (profil) */
+  onNavigate?: (id: string) => void
+  /** Centrer sur cette personne dans l'arbre (ferme la modale) */
+  onCenterOnTree?: (id: string) => void
 }
 
-export default function ProfileModal({ personId, onClose }: ProfileModalProps) {
+export default function ProfileModal({
+  personId,
+  onClose,
+  generationLabel,
+  neighbors = {},
+  onNavigate,
+  onCenterOnTree,
+}: ProfileModalProps) {
   const [person, setPerson] = useState<Person | null>(null)
   const [souvenirs, setSouvenirs] = useState<Souvenir[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,14 +75,78 @@ export default function ProfileModal({ personId, onClose }: ProfileModalProps) {
         onClick={e => e.stopPropagation()}
         className="bg-parchment-50 rounded-2xl shadow-warm-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border-2 border-royal-gold/30"
       >
-        {/* Header gold */}
-        <div className="relative bg-gradient-to-br from-royal-gold-light via-parchment-100 to-parchment-50 px-6 pt-6 pb-4 border-b-2 border-royal-gold/30">
+        {/* Barre de navigation en haut : gen à gauche, retour arbre à droite */}
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-2 bg-parchment-100 border-b border-royal-gold/20">
+          <div className="flex items-center gap-2">
+            {generationLabel !== null && generationLabel !== undefined && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-display italic text-xs font-bold"
+                style={{ background: 'rgba(196,146,42,0.15)', color: '#6B4A0F' }}
+                title="Génération de cette personne"
+              >
+                Génération {generationLabel}
+              </span>
+            )}
+            {person && onCenterOnTree && (
+              <button
+                onClick={() => onCenterOnTree(person.id)}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-display italic text-xs text-heritage-brown hover:bg-white/60 transition-colors"
+                title="Centrer cette personne dans l'arbre"
+              >
+                <TreeDeciduous className="w-3 h-3" />
+                <span>Voir dans l&apos;arbre</span>
+              </button>
+            )}
+          </div>
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full text-heritage-brown hover:bg-white/60 flex items-center justify-center"
+            className="w-7 h-7 rounded-full text-heritage-brown hover:bg-white/60 flex items-center justify-center"
+            aria-label="Fermer"
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Flèches de navigation familiales (haut : parents, bas : enfants, gauche/droite : conjoint·e·s / frères/sœurs) */}
+        {onNavigate && (neighbors.up || neighbors.down || neighbors.left || neighbors.right) && (
+          <div className="relative px-4 pt-2 pb-1">
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <NeighborButton
+                icon={<ArrowLeft className="w-3 h-3" />}
+                label={neighbors.left?.label}
+                onClick={() => neighbors.left && onNavigate(neighbors.left.id)}
+                disabled={!neighbors.left}
+                hint="Frère/sœur ou conjoint·e"
+              />
+              <div className="flex flex-col items-center gap-1 flex-1">
+                <NeighborButton
+                  icon={<ArrowUp className="w-3 h-3" />}
+                  label={neighbors.up?.label}
+                  onClick={() => neighbors.up && onNavigate(neighbors.up.id)}
+                  disabled={!neighbors.up}
+                  hint="Parent (ascendant)"
+                />
+                <NeighborButton
+                  icon={<ArrowDown className="w-3 h-3" />}
+                  label={neighbors.down?.label}
+                  onClick={() => neighbors.down && onNavigate(neighbors.down.id)}
+                  disabled={!neighbors.down}
+                  hint="Enfant (descendant)"
+                />
+              </div>
+              <NeighborButton
+                icon={<ArrowRight className="w-3 h-3" />}
+                label={neighbors.right?.label}
+                onClick={() => neighbors.right && onNavigate(neighbors.right.id)}
+                disabled={!neighbors.right}
+                hint="Frère/sœur ou conjoint·e"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Header gold */}
+        <div className="relative bg-gradient-to-br from-royal-gold-light via-parchment-100 to-parchment-50 px-6 pt-6 pb-4 border-b-2 border-royal-gold/30">
 
           {loading && (
             <div className="flex items-center justify-center py-6">
@@ -156,12 +245,40 @@ export default function ProfileModal({ personId, onClose }: ProfileModalProps) {
           </div>
         )}
 
-        {!loading && souvenirs.length === 0 && person && !person.biography && (
-          <div className="px-6 py-8 text-center text-sm italic text-heritage-brown">
-            Pas encore de récit pour {person.first_name}.
-          </div>
-        )}
       </div>
     </div>
+  )
+}
+
+function NeighborButton({
+  icon,
+  label,
+  onClick,
+  disabled,
+  hint,
+}: {
+  icon: React.ReactNode
+  label?: string
+  onClick: () => void
+  disabled?: boolean
+  hint: string
+}) {
+  if (disabled) {
+    return (
+      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-parchment-500/50 opacity-40" title={hint}>
+        {icon}
+      </div>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 max-w-[180px] px-2 py-1 rounded-full bg-white border border-parchment-300 text-heritage-brown hover:bg-royal-gold-light hover:text-royal-gold-dark hover:border-royal-gold transition-colors font-display italic text-[11px]"
+      title={`${hint}${label ? ' : ' + label : ''}`}
+    >
+      {icon}
+      {label && <span className="truncate">{label}</span>}
+    </button>
   )
 }

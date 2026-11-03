@@ -3,15 +3,15 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Trash2, X, Search, Crown, Download, UserPlus, Loader2 } from 'lucide-react'
+import { Trash2, X, Search, Crown, Download, UserPlus, Loader2, ChevronUp, ChevronDown } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import FamilyTree from '@/components/tree/FamilyTree'
 import PersonPreviewPanel from '@/components/PersonPreviewPanel'
 import BulkDeleteModal from '@/components/BulkDeleteModal'
 import RoyalGenerationModal from '@/components/RoyalGenerationModal'
-import ProfileModal from '@/components/ProfileModal'
-import type { GenerationBand } from '@/lib/treeLayout'
+import ProfileModal, { type ProfileNeighbors } from '@/components/ProfileModal'
+import { computeLayout, classifyKingdoms, type GenerationBand, type Kingdom } from '@/lib/treeLayout'
 import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { createClient } from '@/lib/supabase'
 import { findFamilyFocal, cn } from '@/lib/utils'
@@ -71,6 +71,75 @@ export default function HomePage() {
   const [openProfileId, setOpenProfileId] = useState<string | null>(null)
   // Légende hoistée pour pouvoir ouvrir depuis la sidebar
   const [legendOpen, setLegendOpen] = useState(false)
+
+  // Filtre royaume depuis ?royaume=cayor|baol|fouta-toro
+  const royaumeParam = searchParams.get('royaume')
+  const kingdomFilter: Kingdom | null = useMemo(() => {
+    if (!royaumeParam) return null
+    const map: Record<string, Kingdom> = {
+      'cayor': 'Cayor', 'baol': 'Baol', 'fouta-toro': 'Fouta-Toro',
+      'saloum': 'Saloum', 'djolof': 'Djolof',
+    }
+    return map[royaumeParam.toLowerCase()] || null
+  }, [royaumeParam])
+
+  // IDs des personnes du royaume filtré (si actif)
+  const kingdomMatchIds = useMemo(() => {
+    if (!kingdomFilter) return null
+    const ids = new Set<string>()
+    for (const p of persons) {
+      if (!p.is_royal) continue
+      const kgs = classifyKingdoms(p.royal_title)
+      if (kgs.includes(kingdomFilter)) ids.add(p.id)
+    }
+    return ids
+  }, [kingdomFilter, persons])
+
+  // Layout partagé (pour trouver gens + voisins dans la modale profil)
+  const sharedLayout = useMemo(
+    () => computeLayout(persons, relationships),
+    [persons, relationships],
+  )
+
+  // Infos de navigation pour la modale profil : génération + voisins
+  const profileNavInfo = useMemo(() => {
+    if (!openProfileId) return { gen: null as string | null, neighbors: {} as ProfileNeighbors }
+    // Génération
+    let gen: string | null = null
+    for (const g of sharedLayout.generations) {
+      if (g.personIds.includes(openProfileId)) { gen = g.label; break }
+    }
+    // Voisins : up (parent), down (enfant), left/right (frère/sœur, conjoint·e)
+    const neighbors: ProfileNeighbors = {}
+    const parents: string[] = []
+    const children: string[] = []
+    const spouses: string[] = []
+    const siblingsSet = new Set<string>()
+    for (const r of relationships) {
+      if (r.type === 'parent-enfant' && r.person2_id === openProfileId) parents.push(r.person1_id)
+      if (r.type === 'parent-enfant' && r.person1_id === openProfileId) children.push(r.person2_id)
+      if ((r.type === 'mariage' || r.type === 'union') && r.person1_id === openProfileId) spouses.push(r.person2_id)
+      if ((r.type === 'mariage' || r.type === 'union') && r.person2_id === openProfileId) spouses.push(r.person1_id)
+    }
+    // Frères/sœurs : partagent un parent avec la personne
+    for (const p of parents) {
+      for (const r of relationships) {
+        if (r.type === 'parent-enfant' && r.person1_id === p && r.person2_id !== openProfileId) {
+          siblingsSet.add(r.person2_id)
+        }
+      }
+    }
+    const labelOf = (id: string): string => {
+      const p = persons.find(x => x.id === id)
+      return p ? `${p.first_name} ${p.last_name}` : ''
+    }
+    if (parents[0]) neighbors.up = { id: parents[0], label: labelOf(parents[0]) }
+    if (children[0]) neighbors.down = { id: children[0], label: labelOf(children[0]) }
+    const horizontal = [...spouses, ...Array.from(siblingsSet)]
+    if (horizontal[0]) neighbors.left = { id: horizontal[0], label: labelOf(horizontal[0]) }
+    if (horizontal[1]) neighbors.right = { id: horizontal[1], label: labelOf(horizontal[1]) }
+    return { gen, neighbors }
+  }, [openProfileId, sharedLayout, relationships, persons])
 
 
   useEffect(() => {
@@ -232,6 +301,16 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="absolute inset-0 p-3">
+            {/* Bannière filtre royaume + nav gen précédente / suivante */}
+            {kingdomFilter && kingdomMatchIds && (
+              <KingdomFilterBanner
+                kingdom={kingdomFilter}
+                matchIds={kingdomMatchIds}
+                generations={sharedLayout.generations}
+                onJumpToPerson={id => setCenterTargetId(id)}
+                onClear={() => router.push(pathname)}
+              />
+            )}
             <FamilyTree
               persons={persons}
               relationships={relationships}
@@ -240,7 +319,7 @@ export default function HomePage() {
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
               onPersonClick={setSelectedPerson}
-              searchMatchIds={searchMatchIds}
+              searchMatchIds={searchMatchIds || kingdomMatchIds}
               royalFilter={royalFilter}
               centerTargetId={centerTargetId}
               onCenterDone={() => setCenterTargetId(null)}
@@ -310,6 +389,14 @@ export default function HomePage() {
         <ProfileModal
           personId={openProfileId}
           onClose={() => setOpenProfileId(null)}
+          generationLabel={profileNavInfo.gen}
+          neighbors={profileNavInfo.neighbors}
+          onNavigate={id => setOpenProfileId(id)}
+          onCenterOnTree={id => {
+            setOpenProfileId(null)
+            setOpenGen(null)
+            setCenterTargetId(id)
+          }}
         />
       )}
 
@@ -326,6 +413,80 @@ export default function HomePage() {
           }}
         />
       )}
+    </div>
+  )
+}
+
+/**
+ * Bannière flottante quand un filtre royaume est actif.
+ * Montre le royaume, 2 flèches pour sauter à la génération précédente/suivante
+ * contenant un royal du royaume, et un X pour désactiver.
+ */
+function KingdomFilterBanner({
+  kingdom,
+  matchIds,
+  generations,
+  onJumpToPerson,
+  onClear,
+}: {
+  kingdom: Kingdom
+  matchIds: Set<string>
+  generations: GenerationBand[]
+  onJumpToPerson: (id: string) => void
+  onClear: () => void
+}) {
+  const [cursorIdx, setCursorIdx] = useState<number | null>(null)
+  const gensWithMatch = useMemo(() => {
+    return generations.filter(g => g.personIds.some(id => matchIds.has(id)))
+      .sort((a, b) => a.depth - b.depth)
+  }, [generations, matchIds])
+
+  if (gensWithMatch.length === 0) return null
+
+  const effectiveIdx = cursorIdx === null ? 0 : cursorIdx
+  const currentGen = gensWithMatch[effectiveIdx]
+  const nextIdx = Math.min(gensWithMatch.length - 1, effectiveIdx + 1)
+  const prevIdx = Math.max(0, effectiveIdx - 1)
+
+  function jumpTo(gen: GenerationBand) {
+    const firstMatch = gen.personIds.find(id => matchIds.has(id))
+    if (firstMatch) onJumpToPerson(firstMatch)
+  }
+
+  return (
+    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-white border border-royal-gold/50 shadow-warm-xl rounded-full px-4 py-1.5 flex items-center gap-3 pointer-events-auto">
+      <Crown className="w-4 h-4 text-royal-gold-dark" fill="currentColor" />
+      <span className="font-display italic text-sm font-semibold text-heritage-ink">
+        Royaume {kingdom}
+      </span>
+      <span className="text-[11px] text-heritage-brown italic">
+        Gén. {currentGen.label} ({matchIds.size} royal{matchIds.size > 1 ? 'aux' : ''})
+      </span>
+      <div className="flex items-center gap-0.5">
+        <button
+          disabled={effectiveIdx === 0}
+          onClick={() => { setCursorIdx(prevIdx); jumpTo(gensWithMatch[prevIdx]) }}
+          className="w-7 h-7 rounded-full flex items-center justify-center text-heritage-brown hover:bg-parchment-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          title="Génération précédente avec un ancêtre"
+        >
+          <ChevronUp className="w-4 h-4" />
+        </button>
+        <button
+          disabled={effectiveIdx === gensWithMatch.length - 1}
+          onClick={() => { setCursorIdx(nextIdx); jumpTo(gensWithMatch[nextIdx]) }}
+          className="w-7 h-7 rounded-full flex items-center justify-center text-heritage-brown hover:bg-parchment-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          title="Génération suivante avec un ancêtre"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </button>
+      </div>
+      <button
+        onClick={onClear}
+        className="w-7 h-7 rounded-full flex items-center justify-center text-heritage-brown hover:bg-terracotta-100 hover:text-terracotta-700 border border-transparent hover:border-terracotta-400 transition-colors"
+        title="Désactiver le filtre"
+      >
+        <X className="w-4 h-4" />
+      </button>
     </div>
   )
 }

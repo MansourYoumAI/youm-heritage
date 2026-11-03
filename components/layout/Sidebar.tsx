@@ -146,27 +146,40 @@ export default function Sidebar({
           </Link>
         </nav>
 
-        {/* Royaumes */}
+        {/* Royaumes — chaque lien ouvre la fiche + met en avant les royaux sur l'arbre */}
         <div className="px-3 pt-4">
           <p className="px-3 text-[10px] font-display italic text-parchment-500 uppercase tracking-wider mb-1">
             Royaumes
           </p>
           <div className="space-y-0.5">
-            {KINGDOMS.map(k => (
-              <Link
-                key={k.href}
-                href={k.href}
-                className={cn(
-                  'flex items-center gap-2.5 px-3 py-1.5 rounded-lg font-display italic transition-colors text-[13px]',
-                  pathname === k.href
-                    ? 'bg-royal-gold-light text-royal-gold-dark font-bold'
-                    : 'text-heritage-brown hover:bg-parchment-200 hover:text-heritage-ink',
-                )}
-              >
-                <Crown className="w-3 h-3 flex-shrink-0 text-royal-gold-dark" />
-                <span>{k.label}</span>
-              </Link>
-            ))}
+            {KINGDOMS.map(k => {
+              const slug = k.href.slice(1) // "/cayor" → "cayor"
+              const treeHighlightHref = `/?royaume=${slug}`
+              const activePage = pathname === k.href
+              return (
+                <div key={k.href} className="group flex items-center gap-0.5">
+                  <Link
+                    href={k.href}
+                    className={cn(
+                      'flex-1 flex items-center gap-2.5 px-3 py-1.5 rounded-lg font-display italic transition-colors text-[13px]',
+                      activePage
+                        ? 'bg-royal-gold-light text-royal-gold-dark font-bold'
+                        : 'text-heritage-brown hover:bg-parchment-200 hover:text-heritage-ink',
+                    )}
+                  >
+                    <Crown className="w-3 h-3 flex-shrink-0 text-royal-gold-dark" />
+                    <span>{k.label}</span>
+                  </Link>
+                  <Link
+                    href={treeHighlightHref}
+                    title={`Mettre en avant les ancêtres ${k.label} sur l'arbre`}
+                    className="w-6 h-6 rounded-full text-parchment-500 hover:text-royal-gold-dark hover:bg-royal-gold-light flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <TreeDeciduous className="w-3 h-3" />
+                  </Link>
+                </div>
+              )
+            })}
           </div>
         </div>
 

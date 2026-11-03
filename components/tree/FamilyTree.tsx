@@ -5,7 +5,7 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import type { Person, Relationship, Souvenir } from '@/lib/types'
 import { computeLayout, NODE_W, NODE_H, type GenerationBand } from '@/lib/treeLayout'
 import PersonNode from './PersonNode'
-import { HelpCircle, X, Crown, ScrollText, UserPlus, ImageDown, Loader2, ArrowRight } from 'lucide-react'
+import { HelpCircle, X, Crown, ScrollText, UserPlus, ImageDown, Loader2, ArrowLeft } from 'lucide-react'
 import RoyalCrown from '@/components/icons/RoyalCrown'
 import { cn } from '@/lib/utils'
 import { useAdminMode } from '@/lib/useAdminMode'
@@ -563,115 +563,148 @@ export default function FamilyTree({
         </TransformComponent>
       </TransformWrapper>
 
-      {/* ─── Overlay sticky : étiquettes générations + marqueurs historiques ─── */}
-      {/* Toujours visibles à gauche même en pannant horizontalement. Position Y suit
-          le canvas (verticalement les labels bougent avec le tree), position X fixe. */}
-      <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-        {/* Étiquettes génération */}
-        {layout.generations.map(gen => {
-          const bandCenterCanvasY = gen.yTop + TOP_PADDING + NODE_H / 2
-          const screenY = bandCenterCanvasY * transformState.scale + transformState.positionY
-          const hasRoyals = gen.royalCount > 0
-          const kingdomsText = Object.entries(gen.royalsByKingdom)
-            .filter(([, ids]) => (ids?.length ?? 0) > 0)
-            .map(([k, ids]) => `${ids!.length} du ${k}`)
-            .join(', ')
-          return (
+      {/* ─── Colonne GAUCHE : étiquettes génération compactes ─── */}
+      {(() => {
+        const COL_W_LEFT = 90
+        const compactLabels = transformState.scale < 0.6
+        return (
+          <div
+            className="absolute left-0 top-16 bottom-10 pointer-events-none z-10 overflow-hidden"
+            style={{ width: COL_W_LEFT }}
+          >
             <div
-              key={`gen-overlay-${gen.depth}`}
-              className="absolute select-none"
+              className="absolute inset-0"
               style={{
-                left: 8,
-                top: screenY - 40,
-                width: 160,
-                height: 90,
-                textAlign: 'center',
-                opacity: screenY < -20 || screenY > 10000 ? 0 : 1,
+                background: 'linear-gradient(to right, rgba(248,243,228,0.97) 0%, rgba(248,243,228,0.9) 70%, rgba(248,243,228,0) 100%)',
               }}
-            >
-              <div
-                className="font-display italic text-heritage-brown/80 leading-tight whitespace-nowrap"
-                style={{ fontSize: '22px', letterSpacing: '0.01em' }}
-                title={gen.depth === 0 ? "Génération N (vous)" : `${gen.depth}ᵉ génération d'ancêtres`}
-              >
-                Génération {gen.label}
-              </div>
-              {hasRoyals && (
-                <button
-                  type="button"
-                  onClick={() => onOpenRoyalGeneration?.(gen)}
-                  className="pointer-events-auto mt-1.5 inline-flex items-center gap-1.5 font-display italic font-bold hover:underline hover:scale-[1.03] transition-transform"
-                  style={{ color: '#6B4A0F', fontSize: '18px' }}
-                  title={`Voir les ancêtres royaux : ${kingdomsText}`}
+            />
+            {layout.generations.map(gen => {
+              const bandCenterCanvasY = gen.yTop + TOP_PADDING + NODE_H / 2
+              const screenY = bandCenterCanvasY * transformState.scale + transformState.positionY - 64
+              const hasRoyals = gen.royalCount > 0
+              const kingdomsText = Object.entries(gen.royalsByKingdom)
+                .filter(([, ids]) => (ids?.length ?? 0) > 0)
+                .map(([k, ids]) => `${ids!.length} du ${k}`)
+                .join(', ')
+              return (
+                <div
+                  key={`gen-overlay-${gen.depth}`}
+                  className="absolute select-none"
+                  style={{
+                    left: 4,
+                    top: screenY - 18,
+                    width: 80,
+                    textAlign: 'center',
+                    opacity: screenY < -20 ? 0 : 1,
+                  }}
                 >
-                  <RoyalCrown className="w-4 h-4" />
-                  <span>{gen.royalCount} roya{gen.royalCount > 1 ? 'ux' : 'l'}</span>
-                </button>
-              )}
-            </div>
-          )
-        })}
-
-        {/* Marqueurs historiques carmin */}
-        {(() => {
-          const CARMINE = '#B91C1C'
-          const CARMINE_SOFT = '#991B1B'
-          const HISTORY_EVENTS = [
-            { year: '1547', text: 'Naissance du Cayor', personId: '55b8dc54-33d6-4b7f-ae44-1492ed0a3002', yOffset: 0 },
-            { year: '1864', text: 'Le Cayor devient musulman', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: -NODE_H / 2 - 10 },
-            { year: '1883', text: 'Protectorat français du Baol', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: NODE_H / 2 + 15 },
-            { year: '1886', text: 'Fin du Cayor', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: NODE_H + 40 },
-          ] as const
-          return HISTORY_EVENTS.map((ev, i) => {
-            let anchorCanvasY: number | null = null
-            if (ev.personId) {
-              const pos = layout.positions.get(ev.personId)
-              if (pos) anchorCanvasY = pos.y + TOP_PADDING + NODE_H / 2
-            }
-            if (anchorCanvasY == null) {
-              const span = canvasHeight - TOP_PADDING - 100
-              anchorCanvasY = TOP_PADDING + 40 + (i / Math.max(1, HISTORY_EVENTS.length - 1)) * span
-            }
-            const finalCanvasY = anchorCanvasY + ev.yOffset
-            const screenY = finalCanvasY * transformState.scale + transformState.positionY
-            return (
-              <div
-                key={`history-overlay-${i}`}
-                className="absolute select-none flex items-center gap-1.5"
-                style={{
-                  left: 180,
-                  top: screenY - 12,
-                  width: 190,
-                  color: CARMINE,
-                  opacity: screenY < -20 || screenY > 10000 ? 0 : 1,
-                }}
-              >
-                <div className="flex-1 min-w-0 text-right">
                   <div
-                    className="font-display italic font-bold leading-tight"
-                    style={{ fontSize: '18px', color: CARMINE_SOFT }}
+                    className="font-display italic text-heritage-brown/80 leading-none whitespace-nowrap"
+                    style={{ fontSize: compactLabels ? '20px' : '15px', letterSpacing: '0.01em' }}
+                    title={gen.depth === 0 ? "Génération N (vous)" : `Génération ${gen.depth}`}
                   >
-                    {ev.year}
+                    {compactLabels ? gen.label : `Gén. ${gen.label}`}
                   </div>
-                  <div
-                    className="font-display italic font-semibold leading-tight"
-                    style={{ fontSize: '12px', color: CARMINE, opacity: 0.95 }}
-                  >
-                    {ev.text}
+                  {hasRoyals && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenRoyalGeneration?.(gen)}
+                      className="pointer-events-auto mt-0.5 inline-flex items-center gap-1 font-display italic font-bold hover:underline"
+                      style={{ color: '#6B4A0F', fontSize: '11px' }}
+                      title={`Voir les ancêtres royaux : ${kingdomsText}`}
+                    >
+                      <RoyalCrown className="w-3 h-3" />
+                      <span>{gen.royalCount}</span>
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
+
+      {/* ─── Colonne DROITE : « Faits historiques » + 4 marqueurs carmin ─── */}
+      {(() => {
+        const COL_W_RIGHT = 180
+        const CARMINE = '#B91C1C'
+        const CARMINE_SOFT = '#991B1B'
+        const HISTORY_EVENTS = [
+          { year: '1547', text: 'Naissance du Cayor', personId: '55b8dc54-33d6-4b7f-ae44-1492ed0a3002', yOffset: 0 },
+          { year: '1864', text: 'Le Cayor devient musulman', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: -NODE_H / 2 - 10 },
+          { year: '1883', text: 'Protectorat français du Baol', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: NODE_H / 2 + 15 },
+          { year: '1886', text: 'Fin du Cayor', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: NODE_H + 40 },
+        ] as const
+        return (
+          <div
+            className="absolute right-0 top-16 bottom-10 pointer-events-none z-10 overflow-hidden"
+            style={{ width: COL_W_RIGHT }}
+          >
+            <div
+              className="absolute inset-0"
+              style={{
+                background: 'linear-gradient(to left, rgba(248,243,228,0.97) 0%, rgba(248,243,228,0.9) 70%, rgba(248,243,228,0) 100%)',
+              }}
+            />
+            {/* Titre en haut */}
+            <div
+              className="absolute top-0 right-3 font-display italic font-bold uppercase tracking-wider"
+              style={{ color: CARMINE, fontSize: '10px', letterSpacing: '0.12em' }}
+            >
+              Faits historiques
+            </div>
+            {HISTORY_EVENTS.map((ev, i) => {
+              let anchorCanvasY: number | null = null
+              if (ev.personId) {
+                const pos = layout.positions.get(ev.personId)
+                if (pos) anchorCanvasY = pos.y + TOP_PADDING + NODE_H / 2
+              }
+              if (anchorCanvasY == null) {
+                const span = canvasHeight - TOP_PADDING - 100
+                anchorCanvasY = TOP_PADDING + 40 + (i / Math.max(1, HISTORY_EVENTS.length - 1)) * span
+              }
+              const finalCanvasY = anchorCanvasY + ev.yOffset
+              const screenY = finalCanvasY * transformState.scale + transformState.positionY - 64
+              return (
+                <div
+                  key={`history-overlay-${i}`}
+                  className="absolute select-none flex items-center gap-1"
+                  style={{
+                    left: 8,
+                    top: screenY - 12,
+                    width: COL_W_RIGHT - 12,
+                    color: CARMINE,
+                    opacity: screenY < -20 ? 0 : 1,
+                  }}
+                >
+                  {/* Flèche carmin pointant vers l'arbre (gauche) */}
+                  <ArrowLeft
+                    className="flex-shrink-0"
+                    style={{ color: CARMINE, opacity: 0.9 }}
+                    strokeWidth={2.2}
+                    width={14}
+                    height={14}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="font-display italic font-bold leading-tight"
+                      style={{ fontSize: '15px', color: CARMINE_SOFT }}
+                    >
+                      {ev.year}
+                    </div>
+                    <div
+                      className="font-display italic font-semibold leading-tight"
+                      style={{ fontSize: '11px', color: CARMINE, opacity: 0.95 }}
+                    >
+                      {ev.text}
+                    </div>
                   </div>
                 </div>
-                <ArrowRight
-                  className="flex-shrink-0"
-                  style={{ color: CARMINE, opacity: 0.9 }}
-                  strokeWidth={2.2}
-                  width={16}
-                  height={16}
-                />
-              </div>
-            )
-          })
-        })()}
-      </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* ─── Barres de scroll discrètes (vertical droite + horizontal bas) ─── */}
       <ScrollIndicators
