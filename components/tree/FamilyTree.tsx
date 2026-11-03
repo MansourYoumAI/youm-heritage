@@ -69,6 +69,9 @@ export default function FamilyTree({
   const transformRef = useRef<any>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const { isAdmin } = useAdminMode()
+  // État du pan/zoom pour positionner les overlays sticky (générations à gauche,
+  // marqueurs historiques, barres de scroll)
+  const [transformState, setTransformState] = useState({ positionX: 0, positionY: 0, scale: 0.5 })
 
   const layout = useMemo(
     () => computeLayout(persons, relationships, focalId),
@@ -404,12 +407,15 @@ export default function FamilyTree({
       <TransformWrapper
         ref={transformRef}
         initialScale={0.5}
-        minScale={0.15}
+        minScale={0.12}
         maxScale={3}
         wheel={{ step: 0.1, disabled: selectionMode }}
         pinch={{ step: 5, disabled: selectionMode }}
         panning={{ disabled: selectionMode }}
         doubleClick={{ disabled: true }}
+        onTransformed={(_ref, state) => {
+          setTransformState({ positionX: state.positionX, positionY: state.positionY, scale: state.scale })
+        }}
       >
         <TransformComponent
           wrapperStyle={{ width: '100%', height: '100%' }}
@@ -511,115 +517,9 @@ export default function FamilyTree({
             </g>
           </svg>
 
-          {/* Étiquettes de génération — à gauche du canvas, chiffre en Playfair
-              italique + bouton couronne optionnel. */}
-          {layout.generations.map(gen => {
-            const bandCenterY = gen.yTop + TOP_PADDING + NODE_H / 2
-            const hasRoyals = gen.royalCount > 0
-            const kingdomsText = Object.entries(gen.royalsByKingdom)
-              .filter(([, ids]) => (ids?.length ?? 0) > 0)
-              .map(([k, ids]) => `${ids!.length} du ${k}`)
-              .join(', ')
-            return (
-              <div
-                key={`gen-label-${gen.depth}`}
-                className="absolute pointer-events-none select-none"
-                style={{
-                  left: 0,
-                  top: bandCenterY - 40,
-                  width: LEFT_LABELS_PART,
-                  height: 90,
-                  textAlign: 'center',
-                }}
-              >
-                <div
-                  className="font-display italic text-heritage-brown/70 leading-tight whitespace-nowrap"
-                  style={{ fontSize: '28px', letterSpacing: '0.01em' }}
-                  title={gen.depth === 0 ? "Génération N (vous)" : `${gen.depth}ᵉ génération d'ancêtres`}
-                >
-                  Génération {gen.label}
-                </div>
-                {hasRoyals && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenRoyalGeneration?.(gen)}
-                    className="pointer-events-auto mt-2 inline-flex items-center gap-1.5 font-display italic font-bold hover:underline hover:scale-[1.03] transition-transform"
-                    style={{ color: '#6B4A0F', fontSize: '20px' }}
-                    title={`Voir les ancêtres royaux de cette génération : ${kingdomsText}`}
-                  >
-                    <RoyalCrown className="w-5 h-5" />
-                    <span>{gen.royalCount} roya{gen.royalCount > 1 ? 'ux' : 'l'}</span>
-                  </button>
-                )}
-              </div>
-            )
-          })}
-
-          {/* ─── Repères historiques carmin à GAUCHE (entre labels Génération et arbre) ─── */}
-          {(() => {
-            const CARMINE = '#B91C1C'
-            const CARMINE_SOFT = '#991B1B'
-            const HISTORY_EVENTS = [
-              { year: '1547', text: 'Naissance du Cayor', personId: '55b8dc54-33d6-4b7f-ae44-1492ed0a3002', big: true },
-              { year: '1864', text: 'Le Cayor devient musulman', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', big: false, yOffset: -NODE_H / 2 - 20 },
-              { year: '1883', text: 'Protectorat français du Baol', personId: null, big: false, yOffset: NODE_H / 2 - 10 },
-              { year: '1886', text: 'Fin du Cayor', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', big: true, yOffset: NODE_H + 30 },
-            ] as const
-
-            // Zone horizontale réservée aux repères : entre les labels (LEFT_LABELS_PART) et l'arbre (LEFT_LABEL_W).
-            const markerLeft = LEFT_LABELS_PART + 8
-            const markerWidth = LEFT_LABEL_W - LEFT_LABELS_PART - 16 // -arrow space
-
-            return HISTORY_EVENTS.map((ev, i) => {
-              let anchorY: number | null = null
-              if (ev.personId) {
-                const pos = layout.positions.get(ev.personId)
-                if (pos) anchorY = pos.y + TOP_PADDING + NODE_H / 2
-              }
-              if (anchorY == null) {
-                const span = canvasHeight - TOP_PADDING - 100
-                anchorY = TOP_PADDING + 40 + (i / Math.max(1, HISTORY_EVENTS.length - 1)) * span
-              }
-              const yOffset = ('yOffset' in ev && typeof ev.yOffset === 'number') ? ev.yOffset : 0
-              const finalY = anchorY + yOffset
-              const yearSize = 20
-              const textSize = 13
-              return (
-                <div
-                  key={`history-${i}`}
-                  className="absolute pointer-events-none select-none flex items-center gap-1.5"
-                  style={{
-                    left: markerLeft,
-                    top: finalY - yearSize / 2 - 2,
-                    width: markerWidth,
-                    color: CARMINE,
-                  }}
-                >
-                  <div className="flex-1 min-w-0 text-right">
-                    <div
-                      className="font-display italic font-bold leading-tight"
-                      style={{ fontSize: `${yearSize}px`, color: CARMINE_SOFT }}
-                    >
-                      {ev.year}
-                    </div>
-                    <div
-                      className="font-display italic font-semibold leading-tight"
-                      style={{ fontSize: `${textSize}px`, color: CARMINE, opacity: 0.95 }}
-                    >
-                      {ev.text}
-                    </div>
-                  </div>
-                  <ArrowRight
-                    className="flex-shrink-0"
-                    style={{ color: CARMINE, opacity: 0.9 }}
-                    strokeWidth={2.2}
-                    width={18}
-                    height={18}
-                  />
-                </div>
-              )
-            })
-          })()}
+          {/* Les étiquettes de générations et marqueurs historiques sont désormais
+              rendus OUTSIDE TransformComponent (voir ci-dessous) pour rester fixes
+              à gauche de la vue, même en pannant horizontalement. */}
 
           {persons.map(person => {
             const pos = layout.positions.get(person.id)
@@ -663,6 +563,123 @@ export default function FamilyTree({
         </TransformComponent>
       </TransformWrapper>
 
+      {/* ─── Overlay sticky : étiquettes générations + marqueurs historiques ─── */}
+      {/* Toujours visibles à gauche même en pannant horizontalement. Position Y suit
+          le canvas (verticalement les labels bougent avec le tree), position X fixe. */}
+      <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+        {/* Étiquettes génération */}
+        {layout.generations.map(gen => {
+          const bandCenterCanvasY = gen.yTop + TOP_PADDING + NODE_H / 2
+          const screenY = bandCenterCanvasY * transformState.scale + transformState.positionY
+          const hasRoyals = gen.royalCount > 0
+          const kingdomsText = Object.entries(gen.royalsByKingdom)
+            .filter(([, ids]) => (ids?.length ?? 0) > 0)
+            .map(([k, ids]) => `${ids!.length} du ${k}`)
+            .join(', ')
+          return (
+            <div
+              key={`gen-overlay-${gen.depth}`}
+              className="absolute select-none"
+              style={{
+                left: 8,
+                top: screenY - 40,
+                width: 160,
+                height: 90,
+                textAlign: 'center',
+                opacity: screenY < -20 || screenY > 10000 ? 0 : 1,
+              }}
+            >
+              <div
+                className="font-display italic text-heritage-brown/80 leading-tight whitespace-nowrap"
+                style={{ fontSize: '22px', letterSpacing: '0.01em' }}
+                title={gen.depth === 0 ? "Génération N (vous)" : `${gen.depth}ᵉ génération d'ancêtres`}
+              >
+                Génération {gen.label}
+              </div>
+              {hasRoyals && (
+                <button
+                  type="button"
+                  onClick={() => onOpenRoyalGeneration?.(gen)}
+                  className="pointer-events-auto mt-1.5 inline-flex items-center gap-1.5 font-display italic font-bold hover:underline hover:scale-[1.03] transition-transform"
+                  style={{ color: '#6B4A0F', fontSize: '18px' }}
+                  title={`Voir les ancêtres royaux : ${kingdomsText}`}
+                >
+                  <RoyalCrown className="w-4 h-4" />
+                  <span>{gen.royalCount} roya{gen.royalCount > 1 ? 'ux' : 'l'}</span>
+                </button>
+              )}
+            </div>
+          )
+        })}
+
+        {/* Marqueurs historiques carmin */}
+        {(() => {
+          const CARMINE = '#B91C1C'
+          const CARMINE_SOFT = '#991B1B'
+          const HISTORY_EVENTS = [
+            { year: '1547', text: 'Naissance du Cayor', personId: '55b8dc54-33d6-4b7f-ae44-1492ed0a3002', yOffset: 0 },
+            { year: '1864', text: 'Le Cayor devient musulman', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: -NODE_H / 2 - 10 },
+            { year: '1883', text: 'Protectorat français du Baol', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: NODE_H / 2 + 15 },
+            { year: '1886', text: 'Fin du Cayor', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: NODE_H + 40 },
+          ] as const
+          return HISTORY_EVENTS.map((ev, i) => {
+            let anchorCanvasY: number | null = null
+            if (ev.personId) {
+              const pos = layout.positions.get(ev.personId)
+              if (pos) anchorCanvasY = pos.y + TOP_PADDING + NODE_H / 2
+            }
+            if (anchorCanvasY == null) {
+              const span = canvasHeight - TOP_PADDING - 100
+              anchorCanvasY = TOP_PADDING + 40 + (i / Math.max(1, HISTORY_EVENTS.length - 1)) * span
+            }
+            const finalCanvasY = anchorCanvasY + ev.yOffset
+            const screenY = finalCanvasY * transformState.scale + transformState.positionY
+            return (
+              <div
+                key={`history-overlay-${i}`}
+                className="absolute select-none flex items-center gap-1.5"
+                style={{
+                  left: 180,
+                  top: screenY - 12,
+                  width: 190,
+                  color: CARMINE,
+                  opacity: screenY < -20 || screenY > 10000 ? 0 : 1,
+                }}
+              >
+                <div className="flex-1 min-w-0 text-right">
+                  <div
+                    className="font-display italic font-bold leading-tight"
+                    style={{ fontSize: '18px', color: CARMINE_SOFT }}
+                  >
+                    {ev.year}
+                  </div>
+                  <div
+                    className="font-display italic font-semibold leading-tight"
+                    style={{ fontSize: '12px', color: CARMINE, opacity: 0.95 }}
+                  >
+                    {ev.text}
+                  </div>
+                </div>
+                <ArrowRight
+                  className="flex-shrink-0"
+                  style={{ color: CARMINE, opacity: 0.9 }}
+                  strokeWidth={2.2}
+                  width={16}
+                  height={16}
+                />
+              </div>
+            )
+          })
+        })()}
+      </div>
+
+      {/* ─── Barres de scroll discrètes (vertical droite + horizontal bas) ─── */}
+      <ScrollIndicators
+        canvasWidth={canvasWidth}
+        canvasHeight={canvasHeight}
+        transformState={transformState}
+      />
+
       {/* Couche de capture pour la sélection rectangulaire */}
       {selectionMode && (
         <div
@@ -688,6 +705,97 @@ export default function FamilyTree({
         />
       )}
 
+    </div>
+  )
+}
+
+/**
+ * Petites barres de scroll discrètes à droite (vertical) et en bas (horizontal).
+ * Affichées en overlay, non interactives (indicatives). Masquées quand tout le
+ * canvas tient dans la vue.
+ */
+function ScrollIndicators({
+  canvasWidth,
+  canvasHeight,
+  transformState,
+}: {
+  canvasWidth: number
+  canvasHeight: number
+  transformState: { positionX: number; positionY: number; scale: number }
+}) {
+  const [viewport, setViewport] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    const el = containerRef.current.parentElement
+    if (!el) return
+    const measure = () => setViewport({ w: el.clientWidth, h: el.clientHeight })
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const { positionX, positionY, scale } = transformState
+  if (viewport.w === 0 || viewport.h === 0) {
+    return <div ref={containerRef} className="hidden" />
+  }
+
+  const scaledW = canvasWidth * scale
+  const scaledH = canvasHeight * scale
+
+  // Fraction visible dans chaque axe (0 à 1)
+  const vFrac = Math.min(1, viewport.h / scaledH)
+  const hFrac = Math.min(1, viewport.w / scaledW)
+
+  // Position du thumb dans [0,1]
+  const vPos = scaledH > viewport.h ? Math.max(0, Math.min(1, -positionY / (scaledH - viewport.h))) : 0
+  const hPos = scaledW > viewport.w ? Math.max(0, Math.min(1, -positionX / (scaledW - viewport.w))) : 0
+
+  const trackVStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: 60,
+    bottom: 20,
+    right: 6,
+    width: 4,
+    background: 'rgba(139, 98, 20, 0.08)',
+    borderRadius: 2,
+    pointerEvents: 'none',
+    opacity: vFrac < 1 ? 1 : 0,
+    transition: 'opacity 0.3s',
+  }
+  const trackHStyle: React.CSSProperties = {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 6,
+    height: 4,
+    background: 'rgba(139, 98, 20, 0.08)',
+    borderRadius: 2,
+    pointerEvents: 'none',
+    opacity: hFrac < 1 ? 1 : 0,
+    transition: 'opacity 0.3s',
+  }
+  const thumbCommon: React.CSSProperties = {
+    position: 'absolute',
+    background: '#C4922A',
+    borderRadius: 2,
+    opacity: 0.55,
+  }
+  const thumbVHeight = Math.max(24, (viewport.h - 80) * vFrac)
+  const thumbVTop = vPos * ((viewport.h - 80) - thumbVHeight)
+  const thumbHWidth = Math.max(24, (viewport.w - 40) * hFrac)
+  const thumbHLeft = hPos * ((viewport.w - 40) - thumbHWidth)
+
+  return (
+    <div ref={containerRef} className="absolute inset-0 pointer-events-none z-30">
+      <div style={trackVStyle}>
+        <div style={{ ...thumbCommon, top: thumbVTop, left: 0, right: 0, height: thumbVHeight }} />
+      </div>
+      <div style={trackHStyle}>
+        <div style={{ ...thumbCommon, left: thumbHLeft, top: 0, bottom: 0, width: thumbHWidth }} />
+      </div>
     </div>
   )
 }

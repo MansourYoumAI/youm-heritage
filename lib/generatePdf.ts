@@ -456,6 +456,69 @@ export async function downloadFamilyTreePdf(
 
   // ─── Nœuds : layout horizontal (avatar à gauche, texte à droite),
   //    identique à la vue arbre du site.
+  // ─── Étiquettes de génération dans la marge gauche
+  const HISTORY_EVENTS = [
+    { year: '1547', text: 'Naissance du Cayor', personId: '55b8dc54-33d6-4b7f-ae44-1492ed0a3002', yOffset: 0 },
+    { year: '1864', text: 'Le Cayor devient musulman', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: -NODE_H / 2 - 10 },
+    { year: '1883', text: 'Protectorat français du Baol', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: NODE_H / 2 + 15 },
+    { year: '1886', text: 'Fin du Cayor', personId: '9d7a6705-0ee4-4e50-a054-eaf90a51048f', yOffset: NODE_H + 40 },
+  ]
+
+  for (const gen of layout.generations) {
+    const bandCenterY = gen.yTop + NODE_H / 2
+    const pdfY = ty(bandCenterY)
+    if (pdfY < TOP_MARGIN - 5 || pdfY > PAGE_H - BOTTOM_MARGIN + 5) continue
+    // "Génération X" en italique brun pâle
+    doc.setFont('times', 'italic')
+    doc.setFontSize(12)
+    setText(doc, C_LIGHT_BROWN)
+    const label = `Génération ${gen.label}`
+    const textW = doc.getTextWidth(label)
+    const labelX = SIDE_MARGIN - 2
+    doc.text(label, labelX + Math.max(0, 30 - textW), pdfY - 1, { baseline: 'bottom' })
+    // "X royaux" en or foncé, texte simple
+    if (gen.royalCount > 0) {
+      doc.setFont('times', 'italic')
+      doc.setFontSize(10)
+      setText(doc, [107, 74, 15]) // #6B4A0F or foncé
+      const royalLabel = `${gen.royalCount} roya${gen.royalCount > 1 ? 'ux' : 'l'}`
+      const royalW = doc.getTextWidth(royalLabel)
+      doc.text(royalLabel, labelX + Math.max(0, 30 - royalW), pdfY + 2.5, { baseline: 'top' })
+    }
+  }
+
+  // ─── Repères historiques carmin — alignés avec la personne concernée
+  const CARMINE: [number, number, number] = [185, 28, 28]
+  for (const ev of HISTORY_EVENTS) {
+    let anchorY: number | null = null
+    if (ev.personId) {
+      const pos = layout.positions.get(ev.personId)
+      if (pos) anchorY = pos.y + NODE_H / 2
+    }
+    if (anchorY == null) continue
+    const pdfY = ty(anchorY + ev.yOffset)
+    if (pdfY < TOP_MARGIN - 5 || pdfY > PAGE_H - BOTTOM_MARGIN + 5) continue
+    // Trace à côté du bord gauche de l'arbre
+    const markerX = offsetX - 10
+    // Année + texte sur la même ligne
+    doc.setFont('times', 'italic')
+    doc.setFontSize(10)
+    setText(doc, CARMINE)
+    const yearW = doc.getTextWidth(ev.year)
+    const textW = doc.getTextWidth(ev.text)
+    const totalW = yearW + 2 + textW + 4 // + arrow
+    const startX = markerX - totalW
+    doc.text(ev.year, startX, pdfY, { baseline: 'middle' })
+    doc.setFontSize(8)
+    doc.text(ev.text, startX + yearW + 2, pdfY, { baseline: 'middle' })
+    // Petite flèche vers l'arbre
+    setDraw(doc, CARMINE)
+    doc.setLineWidth(0.3)
+    doc.line(markerX - 3, pdfY, markerX, pdfY)
+    doc.line(markerX, pdfY, markerX - 1.5, pdfY - 1.2)
+    doc.line(markerX, pdfY, markerX - 1.5, pdfY + 1.2)
+  }
+
   for (const person of persons) {
     const pos = layout.positions.get(person.id)
     if (!pos) continue
@@ -508,7 +571,8 @@ export async function downloadFamilyTreePdf(
     // ─ Tailles de police (+2pts par rapport à avant)
     const titleSize = Math.max(7, nh * 0.10)
     const firstNameSize = Math.max(13, nh * 0.20) + 2
-    const lastNameSize = Math.max(10, nh * 0.13) + 2
+    // Nom de famille : même police / même taille / même couleur que le prénom
+    const lastNameSize = firstNameSize
     const dateSize = Math.max(7, nh * 0.10)
 
     // ─ Dates de vie (calculé d'abord pour estimer la hauteur du bloc texte)
@@ -601,10 +665,10 @@ export async function downloadFamilyTreePdf(
     }
     cursorY += interGap
 
-    // Nom de famille
-    doc.setFont('helvetica', 'normal')
+    // Nom de famille — même style que le prénom (times bold, encre heritage)
+    doc.setFont('times', 'bold')
     doc.setFontSize(lastNameSize)
-    setText(doc, C_BROWN)
+    setText(doc, C_INK)
     doc.text(person.last_name, textX, cursorY, { baseline: 'top', maxWidth: textW })
     cursorY += lastNameH + interGap
 

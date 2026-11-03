@@ -15,6 +15,7 @@ import {
   X,
   UserPlus,
   Loader2,
+  Menu,
 } from 'lucide-react'
 import type { Person } from '@/lib/types'
 import AdminLoginModal from '@/components/AdminLoginModal'
@@ -58,6 +59,8 @@ export default function Sidebar({
   const pathname = usePathname()
   const { isAdmin, enterPassword, logout } = useAdminMode()
   const [loginOpen, setLoginOpen] = useState(false)
+  // Drawer mobile : fermé par défaut sur mobile, pas d'incidence sur desktop (md:translate-x-0)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const isHome = pathname === '/'
   const isRoyals = pathname === '/recits'
@@ -78,7 +81,41 @@ export default function Sidebar({
 
   return (
     <>
-      <aside className="w-60 flex-shrink-0 bg-parchment-50 border-r border-parchment-400 flex flex-col h-screen sticky top-0 z-40">
+      {/* Bouton hamburger — visible seulement sur mobile */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="md:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-full bg-parchment-50 border border-parchment-400 shadow-warm-md flex items-center justify-center text-heritage-ink"
+        aria-label="Ouvrir le menu"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {/* Backdrop mobile */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          className="md:hidden fixed inset-0 bg-heritage-ink/50 backdrop-blur-sm z-40"
+        />
+      )}
+
+      {/* Sidebar — fixe sur mobile (drawer), sticky sur desktop (collée à gauche) */}
+      <aside
+        className={cn(
+          'w-60 flex-shrink-0 bg-parchment-50 border-r border-parchment-400 flex flex-col h-screen z-50 transition-transform',
+          'md:sticky md:top-0 md:translate-x-0',
+          'fixed top-0 left-0',
+          mobileOpen ? 'translate-x-0 shadow-warm-xl' : '-translate-x-full md:translate-x-0',
+        )}
+      >
+        {/* Bouton fermer sur mobile */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="md:hidden absolute top-3 right-3 w-8 h-8 rounded-full text-heritage-brown hover:bg-parchment-200 flex items-center justify-center z-10"
+          aria-label="Fermer le menu"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
         {/* Logo */}
         <div className="px-5 pt-5 pb-4 border-b border-parchment-300">
           <Link href="/" className="flex items-center gap-2.5">
