@@ -116,21 +116,12 @@ export default function Sidebar({
           <X className="w-4 h-4" />
         </button>
 
-        {/* Logo */}
+        {/* Titre */}
         <div className="px-5 pt-5 pb-4 border-b border-parchment-300">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-white text-lg flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #C4922A 0%, #8B6214 100%)' }}
-            >
-              Y
-            </div>
-            <div className="min-w-0">
-              <p className="font-display italic font-bold text-heritage-ink text-base leading-tight truncate">
-                Famille Youm
-              </p>
-              <p className="text-[10px] text-heritage-brown italic">Archive familiale</p>
-            </div>
+          <Link href="/" className="block">
+            <p className="font-display italic font-bold text-heritage-ink text-base leading-tight truncate">
+              Famille Youm
+            </p>
           </Link>
         </div>
 

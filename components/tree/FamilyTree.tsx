@@ -481,24 +481,22 @@ export default function FamilyTree({
                   key={`parent-${i}`}
                   x1={edge.x1} y1={edge.y1 + TOP_PADDING}
                   x2={edge.x2} y2={edge.y2 + TOP_PADDING}
-                  stroke="#C7B59A"
-                  strokeWidth={1.6}
-                  strokeDasharray="5 4"
+                  stroke="#B8A07A"
+                  strokeWidth={1.8}
                   strokeLinecap="round"
                 />
               ))}
 
-              {/* Liens cousin : pointillés terracotta horizontaux */}
+              {/* Liens cousin : trait continu terracotta horizontaux */}
               {layout.cousinEdges.map((edge, i) => (
                 <g key={`cousin-${i}`}>
                   <line
                     x1={edge.x1} y1={edge.y1 + TOP_PADDING}
                     x2={edge.x2} y2={edge.y2 + TOP_PADDING}
-                    stroke="#A0522D"
-                    strokeWidth={1.5}
-                    strokeDasharray="3 5"
+                    stroke="#B8A07A"
+                    strokeWidth={1.8}
                     strokeLinecap="round"
-                    opacity={0.7}
+                    opacity={0.75}
                   />
                   <text
                     x={(edge.x1 + edge.x2) / 2}
@@ -563,13 +561,12 @@ export default function FamilyTree({
         </TransformComponent>
       </TransformWrapper>
 
-      {/* ─── Colonne GAUCHE : étiquettes génération compactes ─── */}
+      {/* ─── Colonne GAUCHE : étiquettes génération compactes (cachée sur mobile) ─── */}
       {(() => {
         const COL_W_LEFT = 90
-        const compactLabels = transformState.scale < 0.6
         return (
           <div
-            className="absolute left-0 top-16 bottom-10 pointer-events-none z-10 overflow-hidden"
+            className="hidden md:block absolute left-0 top-16 bottom-10 pointer-events-none z-10 overflow-hidden"
             style={{ width: COL_W_LEFT }}
           >
             <div
@@ -592,7 +589,7 @@ export default function FamilyTree({
                   className="absolute select-none"
                   style={{
                     left: 4,
-                    top: screenY - 18,
+                    top: screenY - 16,
                     width: 80,
                     textAlign: 'center',
                     opacity: screenY < -20 ? 0 : 1,
@@ -600,20 +597,20 @@ export default function FamilyTree({
                 >
                   <div
                     className="font-display italic text-heritage-brown/80 leading-none whitespace-nowrap"
-                    style={{ fontSize: compactLabels ? '20px' : '15px', letterSpacing: '0.01em' }}
+                    style={{ fontSize: '11px', letterSpacing: '0.01em' }}
                     title={gen.depth === 0 ? "Génération N (vous)" : `Génération ${gen.depth}`}
                   >
-                    {compactLabels ? gen.label : `Gén. ${gen.label}`}
+                    Génération {gen.label}
                   </div>
                   {hasRoyals && (
                     <button
                       type="button"
                       onClick={() => onOpenRoyalGeneration?.(gen)}
-                      className="pointer-events-auto mt-0.5 inline-flex items-center gap-1 font-display italic font-bold hover:underline"
-                      style={{ color: '#6B4A0F', fontSize: '11px' }}
+                      className="pointer-events-auto mt-0.5 inline-flex items-center gap-0.5 font-display italic font-bold hover:underline"
+                      style={{ color: '#6B4A0F', fontSize: '9px' }}
                       title={`Voir les ancêtres royaux : ${kingdomsText}`}
                     >
-                      <RoyalCrown className="w-3 h-3" />
+                      <RoyalCrown className="w-2.5 h-2.5" />
                       <span>{gen.royalCount}</span>
                     </button>
                   )}
@@ -624,9 +621,9 @@ export default function FamilyTree({
         )
       })()}
 
-      {/* ─── Colonne DROITE : « Faits historiques » + 4 marqueurs carmin ─── */}
+      {/* ─── Colonne DROITE : « Faits historiques » + 4 marqueurs carmin (cachée sur mobile) ─── */}
       {(() => {
-        const COL_W_RIGHT = 180
+        const COL_W_RIGHT = 160
         const CARMINE = '#B91C1C'
         const CARMINE_SOFT = '#991B1B'
         const HISTORY_EVENTS = [
@@ -637,7 +634,7 @@ export default function FamilyTree({
         ] as const
         return (
           <div
-            className="absolute right-0 top-16 bottom-10 pointer-events-none z-10 overflow-hidden"
+            className="hidden md:block absolute right-0 top-16 bottom-10 pointer-events-none z-10 overflow-hidden"
             style={{ width: COL_W_RIGHT }}
           >
             <div
@@ -646,10 +643,10 @@ export default function FamilyTree({
                 background: 'linear-gradient(to left, rgba(248,243,228,0.97) 0%, rgba(248,243,228,0.9) 70%, rgba(248,243,228,0) 100%)',
               }}
             />
-            {/* Titre en haut */}
+            {/* Titre en haut, discret */}
             <div
-              className="absolute top-0 right-3 font-display italic font-bold uppercase tracking-wider"
-              style={{ color: CARMINE, fontSize: '10px', letterSpacing: '0.12em' }}
+              className="absolute top-0 right-3 font-display italic uppercase tracking-wider"
+              style={{ color: CARMINE, fontSize: '8px', letterSpacing: '0.14em', opacity: 0.65 }}
             >
               Faits historiques
             </div>
@@ -671,7 +668,7 @@ export default function FamilyTree({
                   className="absolute select-none flex items-center gap-1"
                   style={{
                     left: 8,
-                    top: screenY - 12,
+                    top: screenY - 10,
                     width: COL_W_RIGHT - 12,
                     color: CARMINE,
                     opacity: screenY < -20 ? 0 : 1,
@@ -680,21 +677,21 @@ export default function FamilyTree({
                   {/* Flèche carmin pointant vers l'arbre (gauche) */}
                   <ArrowLeft
                     className="flex-shrink-0"
-                    style={{ color: CARMINE, opacity: 0.9 }}
-                    strokeWidth={2.2}
-                    width={14}
-                    height={14}
+                    style={{ color: CARMINE, opacity: 0.85 }}
+                    strokeWidth={2}
+                    width={11}
+                    height={11}
                   />
                   <div className="flex-1 min-w-0">
                     <div
                       className="font-display italic font-bold leading-tight"
-                      style={{ fontSize: '15px', color: CARMINE_SOFT }}
+                      style={{ fontSize: '11px', color: CARMINE_SOFT }}
                     >
                       {ev.year}
                     </div>
                     <div
-                      className="font-display italic font-semibold leading-tight"
-                      style={{ fontSize: '11px', color: CARMINE, opacity: 0.95 }}
+                      className="font-display italic leading-tight"
+                      style={{ fontSize: '9px', color: CARMINE, opacity: 0.9 }}
                     >
                       {ev.text}
                     </div>
