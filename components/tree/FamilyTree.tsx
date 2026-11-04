@@ -73,17 +73,27 @@ export default function FamilyTree({
   // marqueurs historiques, barres de scroll)
   const [transformState, setTransformState] = useState({ positionX: 0, positionY: 0, scale: 0.5 })
 
+  // Détection mobile (viewport < 768px) — change le canvas et le zoom initial
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(max-width: 767px)')
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
   const layout = useMemo(
     () => computeLayout(persons, relationships, focalId),
     [persons, relationships, focalId]
   )
 
   // Bande à gauche : étiquettes de génération (gauche) + repères historiques (droite).
-  const LEFT_LABEL_W = 380
-  // La partie "Génération X / X royaux" prend la moitié gauche.
+  // Sur mobile ces colonnes sont masquées → pas de gutter réservée.
+  const LEFT_LABEL_W = isMobile ? 0 : 380
   const LEFT_LABELS_PART = 180
-  // Marge droite minimale (plus de frise historique à droite).
-  const RIGHT_TIMELINE_W = 40
+  const RIGHT_TIMELINE_W = isMobile ? 0 : 40
   const treeContentW = Math.max(layout.width, 800)
   const canvasWidth = treeContentW + LEFT_LABEL_W + RIGHT_TIMELINE_W
   const treeHeight = Math.max(layout.height, 600)
@@ -108,28 +118,33 @@ export default function FamilyTree({
     return { focalCenterX: fx, focalBottomY: fy }
   }, [layout, canvasWidth, canvasHeight, TOP_PADDING, LEFT_LABEL_W, RIGHT_TIMELINE_W])
 
-  // ─── Centrage initial : vue d'ensemble montrant les labels de génération,
-  //     les repères historiques (gauche) et la largeur complète de l'arbre.
+  // ─── Centrage initial : viser ~5 générations visibles, centré sur le focal.
   const centerOnFocal = useCallback((animate = true) => {
     if (!transformRef.current) return
     const wrapper = transformRef.current?.instance?.wrapperComponent as HTMLDivElement | undefined
     if (!wrapper) return
     const rect = wrapper.getBoundingClientRect()
 
-    // On veut voir le canvas en entier dans la largeur (labels gauche + arbre),
-    // et au moins ~11 générations dans la hauteur. Scale pris sur la contrainte
-    // la plus serrée pour que tout soit visible.
-    const visibleGens = 11
-    const neededHeight = visibleGens * (NODE_H + 70) + TOP_PADDING
-    const scaleY = (rect.height * 0.95) / neededHeight
+    // Objectif : ~5 générations dans la hauteur. La largeur reste bornée par le
+    // canvas pour éviter une vue plus large que l'arbre ne le permet.
+    const visibleGens = 5
+    const neededHeight = visibleGens * (NODE_H + 70) + 40
+    const scaleY = (rect.height * 0.92) / neededHeight
     const scaleX = (rect.width * 0.98) / canvasWidth
-    const scale = Math.max(0.12, Math.min(scaleX, scaleY, 1))
+    const scale = Math.max(0.15, Math.min(scaleX, scaleY, 1.1))
 
-    // Centrer horizontalement sur le milieu du canvas (pour que gauche et droite soient visibles)
-    const targetX = rect.width / 2 - (canvasWidth / 2) * scale
-    const targetY = 20
-    transformRef.current?.setTransform(targetX, targetY, scale, animate ? 300 : 0)
-  }, [canvasWidth, TOP_PADDING])
+    // Mobile : centre sur le focal (Mansour) horizontalement et verticalement.
+    // Desktop : milieu du canvas horizontalement (pour voir les gutters), focal en bas.
+    if (isMobile) {
+      const targetX = rect.width / 2 - focalCenterX * scale
+      const targetY = rect.height / 2 - (focalBottomY - NODE_H / 2) * scale
+      transformRef.current?.setTransform(targetX, targetY, scale, animate ? 300 : 0)
+    } else {
+      const targetX = rect.width / 2 - (canvasWidth / 2) * scale
+      const targetY = rect.height - (focalBottomY + 20) * scale
+      transformRef.current?.setTransform(targetX, Math.min(20, targetY), scale, animate ? 300 : 0)
+    }
+  }, [canvasWidth, isMobile, focalCenterX, focalBottomY])
 
   // Centrage initial après chaque changement de layout/focal (sans pulse)
   useEffect(() => {
@@ -253,6 +268,24 @@ export default function FamilyTree({
 
   return (
     <div className="relative w-full h-full bg-parchment-100 overflow-hidden rounded-xl" ref={wrapperRef}>
+      {/* ─── Bouton couronne discret (mobile uniquement) : ouvre la plus ancienne génération royale ─── */}
+      {(() => {
+        const oldestRoyalGen = [...layout.generations]
+          .filter(g => g.royalCount > 0)
+          .sort((a, b) => b.depth - a.depth)[0]
+        if (!oldestRoyalGen || !onOpenRoyalGeneration) return null
+        return (
+          <button
+            onClick={() => onOpenRoyalGeneration(oldestRoyalGen)}
+            className="md:hidden fixed top-3 right-3 z-50 w-10 h-10 rounded-full bg-parchment-50 border border-royal-gold/40 shadow-warm-md flex items-center justify-center text-royal-gold-dark hover:bg-royal-gold-light transition-colors"
+            aria-label="Voir les ancêtres royaux"
+            title="Ancêtres royaux"
+          >
+            <Crown className="w-5 h-5" fill="currentColor" fillOpacity={0.2} />
+          </button>
+        )
+      })()}
+
       {/* ─── Titre toujours visible : overlay flottant centré en haut, hors du canvas pan/zoom ─── */}
       <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none pt-3 pb-2 bg-gradient-to-b from-parchment-100 via-parchment-100/95 to-transparent">
         <h1

@@ -454,13 +454,13 @@ function KingdomFilterBanner({
   }
 
   return (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-white border border-royal-gold/50 shadow-warm-xl rounded-full px-4 py-1.5 flex items-center gap-3 pointer-events-auto">
-      <Crown className="w-4 h-4 text-royal-gold-dark" fill="currentColor" />
-      <span className="font-display italic text-sm font-semibold text-heritage-ink">
-        Royaume {kingdom}
+    <div className="absolute top-16 md:top-3 left-1/2 -translate-x-1/2 z-30 bg-white border border-royal-gold/50 shadow-warm-xl rounded-full px-3 md:px-4 py-1.5 flex items-center gap-2 md:gap-3 pointer-events-auto max-w-[94vw]">
+      <Crown className="w-4 h-4 text-royal-gold-dark flex-shrink-0" fill="currentColor" />
+      <span className="font-display italic text-xs md:text-sm font-semibold text-heritage-ink whitespace-nowrap">
+        {kingdom}
       </span>
-      <span className="text-[11px] text-heritage-brown italic">
-        Gén. {currentGen.label} ({matchIds.size} royal{matchIds.size > 1 ? 'aux' : ''})
+      <span className="text-[10px] md:text-[11px] text-heritage-brown italic whitespace-nowrap">
+        Gén. {currentGen.label} ({matchIds.size})
       </span>
       <div className="flex items-center gap-0.5">
         <button

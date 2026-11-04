@@ -110,7 +110,7 @@ export default function RoyalGenerationModal({
                 {genLabel}
               </h2>
               <p className="text-xs text-heritage-brown font-semibold">
-                {generation.royalCount} ancêtre{generation.royalCount > 1 ? 's' : ''} royal{generation.royalCount > 1 ? 'aux' : ''}
+                {generation.royalCount} ancêtre{generation.royalCount > 1 ? 's' : ''} {generation.royalCount > 1 ? 'royaux' : 'royal'}
                 {kingdomsText && <> — {kingdomsText}</>}
               </p>
             </div>
