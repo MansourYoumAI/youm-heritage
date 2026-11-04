@@ -71,6 +71,8 @@ export default function HomePage() {
   const [openProfileId, setOpenProfileId] = useState<string | null>(null)
   // Légende hoistée pour pouvoir ouvrir depuis la sidebar
   const [legendOpen, setLegendOpen] = useState(false)
+  // Mode vitrine royale (desktop) : grossit les royaux, dim les autres
+  const [royalShowcase, setRoyalShowcase] = useState(false)
 
   // Filtre royaume depuis ?royaume=cayor|baol|fouta-toro
   const royaumeParam = searchParams.get('royaume')
@@ -331,6 +333,37 @@ export default function HomePage() {
               legendOpenControlled={legendOpen}
               onLegendClose={() => setLegendOpen(false)}
               onOpenRoyalGeneration={gen => setOpenGen(gen)}
+              royalShowcase={royalShowcase}
+              onEnterRoyalShowcase={() => setRoyalShowcase(true)}
+              onExitRoyalShowcase={() => setRoyalShowcase(false)}
+              onOpenMobileRoyalView={() => {
+                // Sur mobile : ouvre le modal "tous les royaux" (bande synthétique
+                // compilant tous les royaux de toutes les générations).
+                const allRoyalIds: string[] = []
+                const royalsByKingdom: Partial<Record<Kingdom, string[]>> = {}
+                for (const g of sharedLayout.generations) {
+                  for (const id of Object.values(g.royalsByKingdom).flat()) {
+                    if (id && !allRoyalIds.includes(id)) allRoyalIds.push(id)
+                  }
+                  for (const [k, ids] of Object.entries(g.royalsByKingdom)) {
+                    if (!ids) continue
+                    const kg = k as Kingdom
+                    if (!royalsByKingdom[kg]) royalsByKingdom[kg] = []
+                    for (const id of ids) {
+                      if (!royalsByKingdom[kg]!.includes(id)) royalsByKingdom[kg]!.push(id)
+                    }
+                  }
+                }
+                setOpenGen({
+                  depth: -1,
+                  label: 'Tous',
+                  yTop: 0,
+                  yBottom: 0,
+                  personIds: allRoyalIds,
+                  royalsByKingdom,
+                  royalCount: allRoyalIds.length,
+                })
+              }}
             />
           </div>
         )}

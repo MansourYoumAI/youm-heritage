@@ -297,7 +297,17 @@ export default function FamilyTree({
       })()}
 
       {/* ─── Titre toujours visible : overlay flottant centré en haut, hors du canvas pan/zoom ─── */}
-      <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none pt-3 pb-2 bg-gradient-to-b from-parchment-100 via-parchment-100/95 to-transparent">
+      {/* Bande de flou en bas du titre : s'arrête avant la colonne "Faits historiques" (right-[180px]) */}
+      <div
+        className="absolute top-0 left-0 right-0 md:right-[180px] z-20 pointer-events-none"
+        style={{
+          height: 110,
+          background: 'linear-gradient(to bottom, rgba(248,243,228,1) 0%, rgba(248,243,228,0.95) 45%, rgba(248,243,228,0.75) 75%, rgba(248,243,228,0) 100%)',
+          backdropFilter: 'blur(2px)',
+          WebkitBackdropFilter: 'blur(2px)',
+        }}
+      />
+      <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none pt-3 pb-2">
         <div className="flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-4">
           <h1
             className="text-center font-display italic font-bold leading-none"
@@ -497,7 +507,11 @@ export default function FamilyTree({
         }}
       >
         <TransformComponent
-          wrapperStyle={{ width: '100%', height: '100%' }}
+          wrapperStyle={{
+            width: '100%',
+            height: '100%',
+            cursor: selectionMode ? 'crosshair' : 'grab',
+          }}
           contentStyle={{ width: canvasWidth, height: canvasHeight }}
         >
           <svg
@@ -601,6 +615,7 @@ export default function FamilyTree({
           {persons.map(person => {
             const pos = layout.positions.get(person.id)
             if (!pos) return null
+            const showcaseScale = royalShowcase && person.is_royal
             return (
               <div
                 key={person.id}
@@ -610,6 +625,10 @@ export default function FamilyTree({
                   top: pos.y + TOP_PADDING,
                   width: NODE_W,
                   height: NODE_H,
+                  transform: showcaseScale ? 'scale(1.12)' : undefined,
+                  transformOrigin: 'center center',
+                  zIndex: showcaseScale ? 5 : undefined,
+                  transition: 'transform 300ms ease',
                 }}
               >
                 <PersonNode
@@ -619,9 +638,10 @@ export default function FamilyTree({
                   dimmed={
                     (royalFilter && !person.is_royal) ||
                     (souvenirFilter && !(souvenirsByPerson?.get(person.id)?.length)) ||
-                    (!!searchMatchIds && !searchMatchIds.has(person.id))
+                    (!!searchMatchIds && !searchMatchIds.has(person.id)) ||
+                    (royalShowcase && !person.is_royal)
                   }
-                  highlighted={!!searchMatchIds?.has(person.id)}
+                  highlighted={!!searchMatchIds?.has(person.id) || showcaseScale}
                   souvenirs={souvenirsByPerson?.get(person.id) || []}
                   onClick={() => {
                     if (selectionMode) {
