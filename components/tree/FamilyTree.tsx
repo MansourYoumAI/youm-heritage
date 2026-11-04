@@ -107,9 +107,9 @@ export default function FamilyTree({
   const treeContentW = Math.max(layout.width, 800)
   const canvasWidth = treeContentW + LEFT_LABEL_W + RIGHT_TIMELINE_W
   const treeHeight = Math.max(layout.height, 600)
-  // Marge fixe au-dessus pour permettre un peu de scroll vers le haut sans
-  // gaspiller la moitié du canvas en espace vide.
-  const TOP_PADDING = 180 // + place pour le titre d'arbre doré
+  // Marge fixe au-dessus pour laisser respirer le titre doré sans gaspiller
+  // du canvas en vide.
+  const TOP_PADDING = 100
   const canvasHeight = treeHeight + TOP_PADDING
 
   // Position du focal pour le centrage initial
@@ -128,33 +128,31 @@ export default function FamilyTree({
     return { focalCenterX: fx, focalBottomY: fy }
   }, [layout, canvasWidth, canvasHeight, TOP_PADDING, LEFT_LABEL_W, RIGHT_TIMELINE_W])
 
-  // ─── Centrage initial : viser ~5 générations visibles, centré sur le focal.
+  // ─── Centrage initial : vue d'ensemble — tout l'arbre visible d'un coup.
   const centerOnFocal = useCallback((animate = true) => {
     if (!transformRef.current) return
     const wrapper = transformRef.current?.instance?.wrapperComponent as HTMLDivElement | undefined
     if (!wrapper) return
     const rect = wrapper.getBoundingClientRect()
 
-    // Objectif : ~5 générations dans la hauteur. La largeur reste bornée par le
-    // canvas pour éviter une vue plus large que l'arbre ne le permet.
-    const visibleGens = 5
-    const neededHeight = visibleGens * (NODE_H + 70) + 40
-    const scaleY = (rect.height * 0.92) / neededHeight
+    // Objectif : voir tout l'arbre d'un coup — contrainte la plus serrée entre
+    // largeur et hauteur, légère marge pour ne pas coller aux bords.
     const scaleX = (rect.width * 0.98) / canvasWidth
-    const scale = Math.max(0.15, Math.min(scaleX, scaleY, 1.1))
+    const scaleY = (rect.height * 0.96) / canvasHeight
+    const scale = Math.max(0.1, Math.min(scaleX, scaleY, 1.1))
 
     // Mobile : centre sur le focal (Mansour) horizontalement et verticalement.
-    // Desktop : milieu du canvas horizontalement (pour voir les gutters), focal en bas.
+    // Desktop : centre le canvas en entier (toutes les générations visibles).
     if (isMobile) {
       const targetX = rect.width / 2 - focalCenterX * scale
       const targetY = rect.height / 2 - (focalBottomY - NODE_H / 2) * scale
       transformRef.current?.setTransform(targetX, targetY, scale, animate ? 300 : 0)
     } else {
       const targetX = rect.width / 2 - (canvasWidth / 2) * scale
-      const targetY = rect.height - (focalBottomY + 20) * scale
-      transformRef.current?.setTransform(targetX, Math.min(20, targetY), scale, animate ? 300 : 0)
+      const targetY = rect.height / 2 - (canvasHeight / 2) * scale
+      transformRef.current?.setTransform(targetX, targetY, scale, animate ? 300 : 0)
     }
-  }, [canvasWidth, isMobile, focalCenterX, focalBottomY])
+  }, [canvasWidth, canvasHeight, isMobile, focalCenterX, focalBottomY])
 
   // Centrage initial après chaque changement de layout/focal (sans pulse)
   useEffect(() => {
@@ -301,10 +299,10 @@ export default function FamilyTree({
       <div
         className="absolute top-0 left-0 right-0 md:right-[180px] z-20 pointer-events-none"
         style={{
-          height: 110,
-          background: 'linear-gradient(to bottom, rgba(248,243,228,1) 0%, rgba(248,243,228,0.95) 45%, rgba(248,243,228,0.75) 75%, rgba(248,243,228,0) 100%)',
-          backdropFilter: 'blur(2px)',
-          WebkitBackdropFilter: 'blur(2px)',
+          height: 64,
+          background: 'linear-gradient(to bottom, rgba(248,243,228,1) 0%, rgba(248,243,228,0.9) 50%, rgba(248,243,228,0) 100%)',
+          backdropFilter: 'blur(1.5px)',
+          WebkitBackdropFilter: 'blur(1.5px)',
         }}
       />
       <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none pt-3 pb-2">
