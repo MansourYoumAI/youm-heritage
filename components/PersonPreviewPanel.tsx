@@ -152,12 +152,15 @@ export default function PersonPreviewPanel({ person, onClose, onDeleted }: Perso
                 </p>
               ) : (
                 <>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {visibleSouvenirs.map(s => (
                       <SouvenirPreview
                         key={s.id}
                         souvenir={s}
-                        onImageClick={src => setLightboxSrc(src)}
+                        onOpen={() => {
+                          onClose()
+                          router.push(`/profil/${person.id}#souvenir-${s.id}`)
+                        }}
                       />
                     ))}
                   </div>
@@ -259,39 +262,42 @@ function RoyalTitlePill({
   )
 }
 
-function SouvenirPreview({ souvenir, onImageClick }: { souvenir: Souvenir; onImageClick: (src: string) => void }) {
+function SouvenirPreview({ souvenir, onOpen }: { souvenir: Souvenir; onOpen: () => void }) {
+  const hasImage = !!souvenir.image_url
   return (
-    <div className="bg-parchment-100 rounded-xl p-3 border border-parchment-400">
-      {souvenir.souvenir_date && (
-        <p className="text-[10px] font-bold text-terracotta-600 uppercase tracking-wider mb-0.5">
-          {souvenir.souvenir_date}
-        </p>
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group w-full text-left flex items-stretch gap-3 bg-parchment-100 hover:bg-parchment-50 rounded-xl p-2.5 border border-parchment-400 hover:border-royal-gold/50 hover:shadow-warm-md transition-all"
+    >
+      {hasImage && (
+        <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 border border-parchment-300 bg-parchment-200">
+          <Image
+            src={souvenir.image_url!}
+            alt={souvenir.title}
+            width={56}
+            height={56}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+          />
+        </div>
       )}
-      <p className="font-bold text-heritage-ink text-sm mb-1">{souvenir.title}</p>
-
-      {souvenir.detail && (
-        <p className="text-xs font-medium text-heritage-brown leading-relaxed line-clamp-2 mb-2">
-          {souvenir.detail}
-        </p>
-      )}
-
-      <div className="flex items-center gap-2">
-        {souvenir.image_url && (
-          <button
-            onClick={() => onImageClick(souvenir.image_url!)}
-            className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 cursor-zoom-in"
-          >
-            <Image src={souvenir.image_url} alt={souvenir.title}
-              width={48} height={48} className="w-full h-full object-cover" />
-          </button>
+      <div className="flex-1 min-w-0 flex flex-col justify-center">
+        {souvenir.souvenir_date && (
+          <p className="text-[10px] font-bold text-terracotta-600 uppercase tracking-wider leading-none mb-1">
+            {souvenir.souvenir_date}
+          </p>
         )}
+        <p className="font-display font-bold text-heritage-ink text-sm leading-tight line-clamp-2 group-hover:text-royal-gold-dark transition-colors">
+          {souvenir.title}
+        </p>
         {souvenir.audio_url && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-terracotta-50 text-terracotta-700 text-xs font-semibold">
+          <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-terracotta-700">
             <Mic className="w-3 h-3" />
-            <span>Audio</span>
-          </div>
+            Audio
+          </span>
         )}
       </div>
-    </div>
+      <ArrowRight className="w-3.5 h-3.5 text-parchment-500 group-hover:text-royal-gold-dark flex-shrink-0 self-center" />
+    </button>
   )
 }

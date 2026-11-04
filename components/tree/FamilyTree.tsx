@@ -40,6 +40,12 @@ interface FamilyTreeProps {
   /** État Légende contrôlé par le parent (prime sur l'état interne) */
   legendOpenControlled?: boolean
   onLegendClose?: () => void
+  /** Mode vitrine royale (desktop) : grossit les royaux, assombrit les autres, montre des bulles */
+  royalShowcase?: boolean
+  onEnterRoyalShowcase?: () => void
+  onExitRoyalShowcase?: () => void
+  /** Sur mobile, le bouton « Voir les ancêtres royaux » ouvre un modal plutôt */
+  onOpenMobileRoyalView?: () => void
 }
 
 export default function FamilyTree({
@@ -65,6 +71,10 @@ export default function FamilyTree({
   hideTopActions = false,
   legendOpenControlled,
   onLegendClose,
+  royalShowcase = false,
+  onEnterRoyalShowcase,
+  onExitRoyalShowcase,
+  onOpenMobileRoyalView,
 }: FamilyTreeProps) {
   const transformRef = useRef<any>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -288,20 +298,44 @@ export default function FamilyTree({
 
       {/* ─── Titre toujours visible : overlay flottant centré en haut, hors du canvas pan/zoom ─── */}
       <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none pt-3 pb-2 bg-gradient-to-b from-parchment-100 via-parchment-100/95 to-transparent">
-        <h1
-          className="text-center font-display italic font-bold leading-none"
-          style={{
-            fontSize: 'clamp(14px, 1.4vw, 20px)',
-            background: 'linear-gradient(180deg, #E8B547 0%, #8B6214 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            letterSpacing: '0.02em',
-          }}
-        >
-          Arbre généalogique de la famille Youm
-        </h1>
-        <div className="flex items-center justify-center gap-1.5 mt-1">
+        <div className="flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-4">
+          <h1
+            className="text-center font-display italic font-bold leading-none"
+            style={{
+              fontSize: 'clamp(14px, 1.4vw, 20px)',
+              background: 'linear-gradient(180deg, #E8B547 0%, #8B6214 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              letterSpacing: '0.02em',
+            }}
+          >
+            Arbre généalogique de la famille Youm
+          </h1>
+          {/* Bouton « Voir les ancêtres royaux » : desktop = active le showcase, mobile = ouvre le modal dédié */}
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+                onOpenMobileRoyalView?.()
+              } else if (royalShowcase) {
+                onExitRoyalShowcase?.()
+              } else {
+                onEnterRoyalShowcase?.()
+              }
+            }}
+            className={cn(
+              "pointer-events-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-display italic text-[11px] md:text-xs border transition-colors",
+              royalShowcase
+                ? "bg-heritage-ink text-parchment-100 border-heritage-ink"
+                : "bg-parchment-100 text-heritage-brown border-heritage-brown/60 hover:bg-parchment-200",
+            )}
+            title="Voir les ancêtres royaux"
+          >
+            <Crown className="w-3.5 h-3.5" fill="currentColor" fillOpacity={royalShowcase ? 1 : 0.2} />
+            <span>Voir les ancêtres royaux</span>
+          </button>
+        </div>
+        <div className="hidden md:flex items-center justify-center gap-1.5 mt-1">
           <span className="w-14 h-px bg-royal-gold/50" />
           <span
             className="w-1.5 h-1.5 rotate-45"
@@ -310,6 +344,18 @@ export default function FamilyTree({
           <span className="w-14 h-px bg-royal-gold/50" />
         </div>
       </div>
+
+      {/* Croix de sortie du mode vitrine royale (desktop) */}
+      {royalShowcase && (
+        <button
+          onClick={() => onExitRoyalShowcase?.()}
+          className="hidden md:flex absolute top-3 right-3 z-40 items-center gap-1.5 px-3 py-1.5 rounded-full bg-heritage-ink text-parchment-100 shadow-warm-lg font-display italic text-xs hover:bg-heritage-brown transition-colors"
+          title="Revenir à l'arbre généalogique"
+        >
+          <X className="w-3.5 h-3.5" />
+          <span>Retour à l&apos;arbre</span>
+        </button>
+      )}
 
       <div className={cn("absolute top-3 right-3 z-20 flex flex-col items-end gap-1.5", hideTopActions && "hidden")}>
         {isAdmin && onAddMember && (

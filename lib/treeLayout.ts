@@ -367,30 +367,102 @@ export function computeLayout(
   // noeud ne chevauche le suivant (cas qui arrive quand des branches
   // indépendantes sont placées par recursions séparées et finissent au
   // même endroit). On pousse vers la droite en cascade.
-  const yLevels = new Set<number>()
-  for (const pos of positions.values()) yLevels.add(pos.y)
   const MIN_GAP_BETWEEN_NODES = H_GAP
-  for (const yLevel of yLevels) {
-    const atY: Array<{ id: string; pos: { x: number; y: number } }> = []
-    for (const [id, pos] of positions) {
-      if (pos.y === yLevel) atY.push({ id, pos })
-    }
-    atY.sort((a, b) => a.pos.x - b.pos.x)
-    for (let i = 1; i < atY.length; i++) {
-      const prev = atY[i - 1]
-      const curr = atY[i]
-      const minLeft = prev.pos.x + NODE_W + MIN_GAP_BETWEEN_NODES
-      if (curr.pos.x < minLeft) {
-        const shift = minLeft - curr.pos.x
-        // Décale curr et tous les noeuds plus à droite à la même ligne Y
-        for (let j = i; j < atY.length; j++) {
-          const n = atY[j]
-          const newPos = { x: n.pos.x + shift, y: n.pos.y }
-          positions.set(n.id, newPos)
-          n.pos = newPos
+  function runOverlapResolver() {
+    const yLevels = new Set<number>()
+    for (const pos of positions.values()) yLevels.add(pos.y)
+    for (const yLevel of yLevels) {
+      const atY: Array<{ id: string; pos: { x: number; y: number } }> = []
+      for (const [id, pos] of positions) {
+        if (pos.y === yLevel) atY.push({ id, pos })
+      }
+      atY.sort((a, b) => a.pos.x - b.pos.x)
+      for (let i = 1; i < atY.length; i++) {
+        const prev = atY[i - 1]
+        const curr = atY[i]
+        const minLeft = prev.pos.x + NODE_W + MIN_GAP_BETWEEN_NODES
+        if (curr.pos.x < minLeft) {
+          const shift = minLeft - curr.pos.x
+          for (let j = i; j < atY.length; j++) {
+            const n = atY[j]
+            const newPos = { x: n.pos.x + shift, y: n.pos.y }
+            positions.set(n.id, newPos)
+            n.pos = newPos
+          }
         }
       }
     }
+  }
+  runOverlapResolver()
+
+  // ─── Compacteur de grands vides : identifie les clusters horizontalement
+  // éloignés à chaque niveau Y et décale tout le cluster droit (ascendants
+  // inclus) vers la gauche pour combler l'espace. Évite les trous béants dus
+  // à un sous-arbre d'ascendance très large.
+  const MAX_INTER_CLUSTER_GAP = NODE_W + H_GAP * 2
+
+  function doCompactionPass(): boolean {
+    const localYSet = new Set<number>()
+    for (const pos of positions.values()) localYSet.add(pos.y)
+    const sortedYs = Array.from(localYSet).sort((a, b) => b - a) // bas → haut
+    let biggestGapShift = 0
+    let biggestGapIds: Set<string> | null = null
+    for (const y of sortedYs) {
+      const atY: Array<{ id: string; x: number }> = []
+      for (const [id, pos] of positions) if (pos.y === y) atY.push({ id, x: pos.x })
+      atY.sort((a, b) => a.x - b.x)
+      for (let i = 1; i < atY.length; i++) {
+        const gap = atY[i].x - (atY[i - 1].x + NODE_W)
+        if (gap <= MAX_INTER_CLUSTER_GAP) continue
+        const shift = gap - MAX_INTER_CLUSTER_GAP
+        if (shift <= biggestGapShift) continue
+        // Cluster droit = atY[i..end] + leurs ascendants + leurs conjoints/enfants proches
+        const rightIds = new Set<string>()
+        for (let j = i; j < atY.length; j++) rightIds.add(atY[j].id)
+        const stack = Array.from(rightIds)
+        while (stack.length) {
+          const id = stack.pop()!
+          const ps = parentsOf.get(id) || []
+          for (const p of ps) {
+            if (!rightIds.has(p) && positions.has(p)) {
+              rightIds.add(p)
+              stack.push(p)
+            }
+          }
+          const ch = childrenOf.get(id) || []
+          for (const c of ch) {
+            const cPos = positions.get(c)
+            if (cPos && cPos.x >= atY[i].x && !rightIds.has(c)) {
+              rightIds.add(c)
+              stack.push(c)
+            }
+          }
+          const sp = spousesOf.get(id) || []
+          for (const s of sp) {
+            const sPos = positions.get(s)
+            if (sPos && sPos.x >= atY[i].x && !rightIds.has(s)) {
+              rightIds.add(s)
+              stack.push(s)
+            }
+          }
+        }
+        biggestGapShift = shift
+        biggestGapIds = rightIds
+      }
+    }
+    if (biggestGapShift > 0 && biggestGapIds) {
+      for (const id of biggestGapIds) {
+        const pos = positions.get(id)!
+        positions.set(id, { x: pos.x - biggestGapShift, y: pos.y })
+      }
+      return true
+    }
+    return false
+  }
+
+  for (let iter = 0; iter < 12; iter++) {
+    if (!doCompactionPass()) break
+    runOverlapResolver()
   }
 
   // ─── Normalisation : décaler pour que minX/minY soient à 0 (+ padding)
