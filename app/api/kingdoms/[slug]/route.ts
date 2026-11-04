@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/adminAuth'
 
-const EDIT_PASSWORD = process.env.DELETE_PASSWORD || 'mansour'
-
 const VALID_SLUGS = new Set(['cayor', 'baol', 'fouta-toro'])
 
 // Validation minimale du payload
@@ -46,11 +44,8 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { password, kingdom } = body || {}
+    const { kingdom } = body || {}
 
-    if (!password || password !== EDIT_PASSWORD) {
-      return NextResponse.json({ error: 'Mot de passe incorrect' }, { status: 401 })
-    }
     if (!kingdom || typeof kingdom !== 'object') {
       return NextResponse.json({ error: 'Données invalides' }, { status: 400 })
     }

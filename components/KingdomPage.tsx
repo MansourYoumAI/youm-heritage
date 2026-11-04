@@ -50,12 +50,9 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
   const [persons, setPersons] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
 
-  // ─── Mode édition
+  // ─── Mode édition (admin via cookie HMAC ; plus de prompt mot de passe)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Kingdom | null>(null)
-  const [askPassword, setAskPassword] = useState(false)
-  const [password, setPassword] = useState('')
-  const [pwError, setPwError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -88,21 +85,8 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
   }, [persons, matchTitle])
 
   function startEdit() {
-    setPassword('')
-    setPwError('')
-    setAskPassword(true)
-  }
-
-  function confirmPassword() {
-    if (!password) {
-      setPwError('Mot de passe requis.')
-      return
-    }
-    // Le mot de passe n'est validé qu'au moment de l'enregistrement (côté serveur).
     if (!kingdom) return
-    // Si on était déjà en édition (réouverture après 401), on garde le draft
-    if (!draft) setDraft(JSON.parse(JSON.stringify(kingdom)))
-    setAskPassword(false)
+    setDraft(JSON.parse(JSON.stringify(kingdom)))
     setEditing(true)
     setSaveError('')
   }
@@ -121,25 +105,21 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
       const res = await fetch(`/api/kingdoms/${slug}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, kingdom: draft }),
+        body: JSON.stringify({ kingdom: draft }),
       })
       const json = await res.json()
       if (!res.ok) {
-        if (res.status === 401) {
-          // Mauvais mot de passe : on garde le draft, on rouvre le modal
-          setPassword('')
-          setPwError('Mot de passe incorrect.')
-          setAskPassword(true)
-        } else {
-          setSaveError(json.error || 'Erreur inconnue')
-        }
+        setSaveError(
+          res.status === 401
+            ? 'Session admin expirée. Reconnectez-vous.'
+            : (json.error || 'Erreur inconnue'),
+        )
         setSaving(false)
         return
       }
       setKingdom(draft)
       setEditing(false)
       setDraft(null)
-      setPassword('')
     } catch (err) {
       setSaveError((err as Error).message)
     } finally {
@@ -645,41 +625,6 @@ export default function KingdomPage({ slug }: KingdomPageProps) {
         </div>
       </main>
 
-      {/* ─── Modal mot de passe ────────────────────────────── */}
-      {askPassword && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setAskPassword(false)}>
-          <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl shadow-warm-xl border-2 border-parchment-400 p-6 max-w-sm w-full">
-            <h3 className="font-display font-bold text-lg text-heritage-ink mb-2 flex items-center gap-2">
-              <Pencil className="w-5 h-5 text-heritage-green" />
-              Modifier la page
-            </h3>
-            <p className="text-sm text-heritage-brown font-medium mb-4">
-              Saisis le mot de passe d&apos;édition pour passer en mode modification.
-            </p>
-            <input
-              autoFocus
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && confirmPassword()}
-              placeholder="Mot de passe"
-              className="w-full px-4 py-2.5 rounded-xl border-2 border-parchment-400 focus:border-heritage-green focus:outline-none font-semibold text-heritage-ink"
-            />
-            {pwError && <p className="text-xs text-terracotta-700 font-semibold mt-2">{pwError}</p>}
-            <div className="flex gap-2 mt-4">
-              <button onClick={() => setAskPassword(false)} className="btn-secondary flex-1">
-                Annuler
-              </button>
-              <button onClick={confirmPassword} className="btn-primary flex-1">
-                Continuer
-              </button>
-            </div>
-            <p className="text-[10px] text-heritage-brown opacity-70 italic mt-3 text-center">
-              Le mot de passe sera vérifié au moment de l&apos;enregistrement.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

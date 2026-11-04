@@ -2,17 +2,12 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/adminAuth'
 
-const DELETE_PASSWORD = process.env.DELETE_PASSWORD || 'mansour'
-
 export async function POST(request: Request) {
   const guard = requireAdmin()
   if (guard) return guard
   try {
-    const { ids, password } = await request.json()
+    const { ids } = await request.json()
 
-    if (!password || password !== DELETE_PASSWORD) {
-      return NextResponse.json({ error: 'Mot de passe incorrect' }, { status: 401 })
-    }
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: 'Aucun identifiant à supprimer' }, { status: 400 })
     }

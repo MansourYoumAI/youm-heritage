@@ -10,7 +10,6 @@ interface BulkDeleteModalProps {
 }
 
 export default function BulkDeleteModal({ ids, onClose, onDeleted }: BulkDeleteModalProps) {
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -29,9 +28,13 @@ export default function BulkDeleteModal({ ids, onClose, onDeleted }: BulkDeleteM
       const res = await fetch('/api/persons/delete-many', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, password }),
+        body: JSON.stringify({ ids }),
       })
-      if (res.status === 401) { setError('Mot de passe incorrect'); setLoading(false); return }
+      if (res.status === 401) {
+        setError('Session admin expirée. Reconnectez-vous.')
+        setLoading(false)
+        return
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         setError(data.error || 'Erreur lors de la suppression')
@@ -70,31 +73,19 @@ export default function BulkDeleteModal({ ids, onClose, onDeleted }: BulkDeleteM
           Vous allez supprimer <strong className="text-heritage-ink">{ids.length} personne{ids.length > 1 ? 's' : ''}</strong> de l&apos;arbre familial, ainsi que leurs récits familiaux, photos et liens. Cette action est irréversible.
         </p>
 
-        <label className="label">Mot de passe de suppression</label>
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="input"
-          placeholder="Entrez le mot de passe"
-          autoFocus
-          disabled={loading}
-          onKeyDown={e => { if (e.key === 'Enter' && password) handleDelete() }}
-        />
-
         {error && (
-          <p className="mt-2 text-sm font-semibold text-terracotta-700 bg-terracotta-50 rounded-lg px-3 py-2">
+          <p className="mb-4 text-sm font-semibold text-terracotta-700 bg-terracotta-50 rounded-lg px-3 py-2">
             {error}
           </p>
         )}
 
-        <div className="flex gap-2 mt-5">
+        <div className="flex gap-2">
           <button onClick={onClose} className="btn-secondary flex-1" disabled={loading}>
             Annuler
           </button>
           <button
             onClick={handleDelete}
-            disabled={loading || !password}
+            disabled={loading}
             className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-terracotta-500 text-white font-semibold hover:bg-terracotta-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             style={{ minHeight: 48 }}
           >
